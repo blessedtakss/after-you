@@ -1,0 +1,584 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><style>:root{color-scheme:light;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>After You</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&amp;family=Literata:ital,opsz,wght@0,7..72,400..600;1,7..72,400&amp;display=swap">
+<style>
+/* Concept: two banks and one ford. Their four houses stand on the far bank and your house on the near one; every choice is a hand placed on one side of the same band of water, and a card turned over shows the water's colour with your own deeds quoted on it. Everything else is plain type on a pale field. */
+:root {
+  --ground: #E8EBE2;        /* the valley floor: chaff and lichen */
+  --card: #F5F6F0;          /* a holding */
+  --ink: #17211F;           /* slate, leaning toward the water */
+  --ink-soft: #55625D;
+  --line: #BCC5B8;
+  --straw: #A97A10;         /* grain: a hand sent, a measure stored */
+  --water: #2B6071;         /* the ford: the one loud colour */
+  --water-crest: #5B8D9B;
+  --on-water: #EFF5F2;
+  --font-display: "Bricolage Grotesque", "Avenir Next Condensed", "Helvetica Neue", Arial, sans-serif;  /* names, numbers, controls */
+  --font-text: "Literata", "Iowan Old Style", Georgia, "Times New Roman", serif;                        /* sentences */
+  --fs-0: 0.75rem;
+  --fs-1: 0.875rem;
+  --fs-2: 1rem;
+  --fs-3: 1.125rem;
+  --fs-4: 1.5rem;
+  --fs-5: 2rem;
+  --fs-6: clamp(3.25rem, 9vw, 6.5rem);
+  --pad: 14px;
+  --gap: 12px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #101817;
+    --card: #18221F;
+    --ink: #E2E8DE;
+    --ink-soft: #9AA7A0;
+    --line: #34413D;
+    --straw: #DDB44A;
+    --water: #2E6A7B;
+    --water-crest: #64A0AF;
+    --on-water: #EFF5F2;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground: #101817;
+  --card: #18221F;
+  --ink: #E2E8DE;
+  --ink-soft: #9AA7A0;
+  --line: #34413D;
+  --straw: #DDB44A;
+  --water: #2E6A7B;
+  --water-crest: #64A0AF;
+  --on-water: #EFF5F2;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-text);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+}
+.page {
+  max-width: 76rem;
+  margin: 0 auto;
+  padding-block: 16px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+h1, h2, h3, h4 { font-family: var(--font-display); font-weight: 800; line-height: 1.1; margin: 0; text-wrap: balance; }
+p { margin: 0; }
+ul, ol { margin: 0; padding: 0; list-style: none; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+[tabindex="-1"]:focus { outline: none; }
+.vh { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+
+.view { display: grid; gap: 18px; min-width: 0; }
+.view > * { min-width: 0; }
+.label { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-0); letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+.small { font-size: var(--fs-0); line-height: 1.45; color: var(--ink-soft); max-width: 28rem; }
+.statement { font-family: var(--font-display); font-weight: 800; font-size: var(--fs-5); line-height: 1.12; text-wrap: balance; font-variant-numeric: tabular-nums; max-width: 24em; }
+.prose { max-width: 34rem; }
+
+.btn {
+  font-family: var(--font-display); font-weight: 600; font-size: var(--fs-2); line-height: 1.2;
+  padding: 0.65rem 1.15rem; border: 1.5px solid var(--ink); border-radius: 2px;
+  background: var(--ink); color: var(--ground); cursor: pointer; font-variant-numeric: tabular-nums;
+}
+.btn.quiet { background: transparent; color: var(--ink); border-color: var(--ink-soft); }
+.btn:disabled { background: transparent; color: var(--ink-soft); border-color: var(--line); border-style: dashed; cursor: default; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+
+/* ---- the ford: one band of water, the same wherever it appears ---- */
+.ford {
+  display: block; position: relative; height: 24px;
+  background-color: var(--water);
+  background-image: linear-gradient(var(--water-crest), var(--water-crest)), linear-gradient(var(--water-crest), var(--water-crest));
+  background-size: 100% 1px, 100% 1px;
+  background-position: 0 7px, 0 16px;
+  background-repeat: no-repeat;
+}
+.ford-name {
+  position: absolute; right: 12px; top: 0; height: 24px; padding: 0 8px; background: var(--water); color: var(--on-water);
+  font-family: var(--font-display); font-weight: 600; font-size: var(--fs-0); line-height: 24px; letter-spacing: 0.12em; text-transform: uppercase;
+}
+
+/* ---- marks: round is yours, a diamond is theirs; filled arrived, open did not ---- */
+.pip { display: inline-block; flex: none; width: 16px; height: 16px; border-radius: 50%; border: 1.5px dashed var(--ink-soft); }
+
+/* ---- opening ---- */
+.opening { gap: 0; }
+.opening h1 { font-size: var(--fs-6); line-height: 0.92; letter-spacing: -0.03em; }
+.lede { font-size: var(--fs-4); line-height: 1.3; max-width: 30em; margin-top: 18px; text-wrap: balance; }
+.op-ford { position: relative; height: 96px; margin-top: 10px; }
+.op-ford .ford { position: absolute; left: 0; right: 0; top: 36px; }
+.op-stem { position: absolute; left: 31px; top: 26px; width: 2px; height: 62px; background: var(--ink); }
+.op-stem::before { content: ""; position: absolute; left: 0; top: 10px; width: 2px; height: 24px; background: var(--on-water); }
+.op-stem::after { content: ""; position: absolute; left: -6px; bottom: 0; width: 14px; height: 2px; background: var(--ink); }
+.op-disc { position: absolute; left: 22px; top: 8px; width: 20px; height: 20px; border-radius: 50%; background: var(--straw); border: 1.5px solid var(--ink); }
+.op-note { position: absolute; left: 54px; font-family: var(--font-display); font-weight: 600; font-size: var(--fs-1); line-height: 20px; }
+.op-note-far { top: 8px; }
+.op-note-near { top: 68px; }
+.op-near { display: grid; grid-template-columns: minmax(0, 40rem) minmax(0, 1fr); gap: 20px 48px; align-items: start; margin-top: 6px; }
+.op-lines { display: grid; gap: 10px; }
+.op-lines li { font-size: var(--fs-3); line-height: 1.45; max-width: 33em; }
+.op-begin { margin-top: 22px; }
+.op-begin .btn { font-size: var(--fs-3); padding: 0.75rem 2rem; }
+.lives { display: grid; gap: 8px; align-content: start; }
+.lives-list { display: grid; gap: 4px; }
+.lives-list li { font-size: var(--fs-1); font-variant-numeric: tabular-nums; color: var(--ink-soft); }
+
+/* ---- the day ---- */
+.day { gap: 12px; }
+.daybar { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 8px 24px; }
+.daybar-day { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 16px; min-width: 0; }
+.daybar h2 { font-size: var(--fs-5); font-variant-numeric: tabular-nums; }
+.day-last { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-2); padding-bottom: 3px; }
+.track { display: flex; align-items: flex-end; gap: 10px; height: 24px; padding-bottom: 4px; }
+.track li { display: flex; align-items: flex-end; gap: 3px; }
+.track i { display: block; width: 9px; height: 20px; background-image: repeating-linear-gradient(90deg, var(--ink-soft) 0, var(--ink-soft) 1.5px, transparent 1.5px, transparent 3px); }
+.track i.spent { height: 4px; }
+.track i.today { background: var(--straw); outline: 1.5px solid var(--ink); outline-offset: 1px; }
+.day-total { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-3); line-height: 1.3; min-height: 1.3em; font-variant-numeric: tabular-nums; padding-bottom: 2px; }
+
+.bank { display: grid; gap: 14px; }
+.cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--gap); }
+.card { display: flex; min-width: 0; perspective: 1200px; }
+.turn { flex: 1; display: flex; min-width: 0; }
+.face { flex: 1; display: flex; flex-direction: column; min-width: 0; padding: 12px var(--pad) var(--pad); background: var(--card); border: 1px solid var(--line); border-radius: 3px; }
+.card.turn-out .turn { animation: turn-out 190ms ease-in forwards; }
+.card.turn-in .turn { animation: turn-in 240ms ease-out; }
+@keyframes turn-out { to { transform: rotateY(90deg); } }
+@keyframes turn-in { from { transform: rotateY(-90deg); } to { transform: rotateY(0deg); } }
+
+.card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; min-height: 30px; }
+.card-names { min-width: 0; }
+.card-name { font-size: var(--fs-3); overflow-wrap: anywhere; }
+.card-sub { font-family: var(--font-display); font-size: var(--fs-0); color: var(--ink-soft); margin-top: 2px; }
+.why {
+  flex: none; display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--font-display); font-weight: 600; font-size: var(--fs-1); line-height: 1.2;
+  padding: 4px 11px; border: 1.5px solid var(--ink); border-radius: 999px; background: transparent; color: var(--ink); cursor: pointer;
+}
+.why.quoted { border-color: var(--straw); border-width: 2.5px; padding: 3px 10px; }
+.why.quoted::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--straw); }
+.card-line { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin: 8px 0 10px; min-height: 2.8em; font-size: var(--fs-1); line-height: 1.4; }
+.card-line .said { min-width: 0; }
+.card-line .delta { flex: none; font-family: var(--font-display); font-weight: 800; font-size: var(--fs-5); line-height: 0.9; font-variant-numeric: tabular-nums; }
+.card.revealed .card-line .said { font-weight: 600; }
+
+.know { margin-bottom: 12px; font-size: var(--fs-0); line-height: 1.3; }
+.know summary { cursor: pointer; padding: 3px 0; font-family: var(--font-display); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); }
+.know-changed { margin: 4px 0 2px; font-style: italic; }
+.know table { width: 100%; border-collapse: collapse; margin-top: 2px; }
+.know th, .know td { padding: 1px 0; vertical-align: baseline; border-top: 1px solid var(--line); }
+.know thead th, .know thead td { border-top: 0; font-family: var(--font-display); font-weight: 400; color: var(--ink-soft); text-align: right; padding-bottom: 3px; }
+.know tbody th { font-weight: 400; text-align: left; padding-right: 8px; }
+.know tbody td { text-align: right; white-space: nowrap; font-family: var(--font-display); font-weight: 600; font-variant-numeric: tabular-nums; }
+.know tbody td.unseen { font-weight: 400; color: var(--ink-soft); }
+.know-note { margin-top: 5px; color: var(--ink-soft); }
+
+.crossing { border: 0; padding: 0; margin: auto 0 0; min-width: 0; }
+.crossing .ford, .crossed .ford { margin-inline: calc(-1px - var(--pad)); }
+.crossing .ford::before, .crossing .ford::after, .crossed .ford::before, .crossed .ford::after {
+  content: ""; position: absolute; top: 0; bottom: 0; width: calc(var(--gap) / 2); background: inherit;
+}
+.crossing .ford::before, .crossed .ford::before { right: 100%; }
+.crossing .ford::after, .crossed .ford::after { left: 100%; }
+.opt { position: relative; display: block; height: 42px; }
+.opt input { position: absolute; left: 0; top: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; z-index: 1; }
+.opt input:disabled { cursor: default; }
+.opt-body {
+  position: absolute; left: 0; right: 0; height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 12px 0 8px;
+  border: 1.5px solid var(--line); border-radius: 999px; background: transparent; color: var(--ink);
+  font-family: var(--font-display); font-weight: 600; font-size: var(--fs-2); line-height: 1; white-space: nowrap;
+}
+.opt-send .opt-body { top: 0; }
+.opt-stay .opt-body { bottom: 0; }
+.opt input:hover + .opt-body { border-color: var(--ink); }
+.opt input:checked + .opt-body { background: var(--ink); border-color: var(--ink); color: var(--ground); }
+.opt input:focus-visible + .opt-body { outline: 2px solid var(--ink); outline-offset: 2px; }
+.opt-send input:checked + .opt-body .pip { background: var(--straw); border: 1.5px solid var(--ground); }
+.opt-stay input:checked + .opt-body .pip { background: transparent; border: 3.5px solid var(--ground); }
+
+.crossed { position: relative; height: 108px; margin-top: auto; }
+.crossed .ford { position: absolute; left: 0; right: 0; top: 42px; }
+.crossed .stem { position: absolute; width: 2px; background: var(--ink); }
+.crossed .stem::before { content: ""; position: absolute; left: 0; width: 2px; background: var(--on-water); }
+.crossed .stem::after { content: ""; position: absolute; left: -5px; width: 12px; height: 2px; background: var(--ink); }
+.crossed .stem-you { left: calc(27% - 1px); }
+.crossed .stem-they { left: calc(73% - 1px); }
+.crossed.you-arrived .stem-you { top: 38px; height: 68px; }
+.crossed.you-arrived .stem-you::before { top: 4px; height: 24px; }
+.crossed.you-lost .stem-you { top: 62px; height: 24px; }
+.crossed.you-lost .stem-you::before { top: 0; height: 4px; }
+.crossed .stem-you::after { bottom: 0; }
+.crossed.you-stayed .stem-you, .crossed.they-none .stem-they { display: none; }
+.crossed.they-arrived .stem-they { top: 2px; height: 68px; }
+.crossed.they-arrived .stem-they::before { top: 40px; height: 24px; }
+.crossed .stem-they::after { top: 0; }
+.crossed .mk { position: absolute; width: 16px; height: 16px; }
+.crossed .mk-you { left: calc(27% - 8px); border-radius: 50%; }
+.crossed.you-arrived .mk-you { top: 22px; background: var(--straw); border: 1.5px solid var(--ink); }
+.crossed.you-lost .mk-you { top: 46px; background: var(--water); border: 2px solid var(--on-water); }
+.crossed.you-lost .mk-you::after { content: ""; position: absolute; left: -3px; right: -3px; top: 5px; height: 2px; background: var(--on-water); transform: rotate(-45deg); }
+.crossed.you-stayed .mk-you { top: 70px; background: transparent; border: 3px solid var(--ink); }
+.crossed .mk-they { left: calc(73% - 7px); top: 71px; width: 14px; height: 14px; transform: rotate(45deg); }
+.crossed.they-arrived .mk-they { background: var(--ink); border: 1.5px solid var(--ink); }
+.crossed.they-none .mk-they { background: transparent; border: 1.5px dashed var(--ink-soft); }
+.crossed .lb { position: absolute; width: 50%; text-align: center; white-space: nowrap; font-family: var(--font-display); font-weight: 600; font-size: var(--fs-0); line-height: 14px; letter-spacing: -0.01em; }
+.crossed .lb-you { left: 2%; top: 91px; }
+.crossed.you-arrived .lb-you { top: 3px; }
+.crossed .lb-they { left: 48%; top: 91px; }
+.crossed.they-none .lb-they { color: var(--ink-soft); }
+
+.face.back { background: var(--water); border-color: var(--water); color: var(--on-water); gap: 8px; }
+.back-who { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-0); letter-spacing: 0.08em; text-transform: uppercase; }
+.back-situation { font-size: var(--fs-4); line-height: 1.1; margin-bottom: 4px; }
+.why-body { display: grid; gap: 8px; font-size: var(--fs-1); line-height: 1.4; }
+.why-body .from-you { font-family: var(--font-display); font-weight: 800; font-size: var(--fs-3); line-height: 1.2; }
+.deeds { display: grid; gap: 7px; }
+.deeds li { position: relative; padding-left: 22px; font-style: italic; }
+.deeds li::before { content: ""; position: absolute; left: 1px; top: 0.25em; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--on-water); }
+.deeds li.sent::before { background: var(--on-water); }
+.why-more { padding-left: 22px; }
+.why-even { font-weight: 600; }
+.unturn {
+  align-self: flex-start; margin-top: auto; font-family: var(--font-display); font-weight: 600; font-size: var(--fs-1); line-height: 1.2;
+  padding: 5px 12px; border: 1.5px solid var(--on-water); border-radius: 999px; background: transparent; color: var(--on-water); cursor: pointer;
+}
+.face.back :focus-visible, .else-why :focus-visible { outline-color: var(--on-water); }
+
+.elsewhere { display: grid; gap: 6px; }
+.else-list { display: grid; gap: 6px; }
+.else-item { font-size: var(--fs-1); }
+.else-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.else-why { margin-top: 8px; max-width: 30rem; padding: 12px var(--pad) var(--pad); border-radius: 3px; background: var(--water); color: var(--on-water); display: grid; gap: 8px; }
+
+/* your own bank: what you may do, what you have done, what you have put by */
+.near { display: grid; grid-template-columns: 15rem minmax(0, 1fr) minmax(0, 19rem); gap: 16px 36px; align-items: start; }
+.day-actions { display: grid; gap: 10px; align-content: start; }
+.day-actions .btn { width: 100%; padding-inline: 0.75rem; }
+.near h3, .leaving h3, .chronicle h3, .after-side h3, .elsewhere h3 { font-size: var(--fs-0); font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 8px; }
+.ways-list { display: grid; gap: 3px; }
+.way { display: grid; grid-template-columns: 12.5rem minmax(0, 1fr) auto; gap: 2px 12px; align-items: center; min-height: 22px; font-size: var(--fs-1); line-height: 1.3; }
+.way-title { font-family: var(--font-display); font-weight: 600; }
+.way-marks { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; min-height: 13px; padding: 2px; }
+.m { display: block; width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--ink); background: transparent; }
+.m.sent { background: var(--straw); border-color: var(--straw); }
+.m.new { box-shadow: 0 0 0 1.5px var(--ground), 0 0 0 3px var(--ink); margin-inline: 3px; }
+.way-count { font-variant-numeric: tabular-nums; color: var(--ink-soft); white-space: nowrap; }
+.way.empty .way-marks { border-bottom: 1.5px dashed var(--line); padding: 0; min-height: 0; height: 8px; }
+.way.empty .way-count { font-style: italic; }
+.store-count { font-family: var(--font-display); font-weight: 800; font-size: var(--fs-4); line-height: 1.1; font-variant-numeric: tabular-nums; margin-bottom: 10px; }
+.meter { position: relative; height: 16px; margin: 6px 0 16px; border: 1.5px solid var(--ink); border-radius: 2px; background: var(--card); max-width: 34rem; }
+.meter-fill { position: absolute; left: 0; top: 0; bottom: 0; width: var(--fill, 0%); background: var(--straw); }
+.meter::after { content: ""; position: absolute; inset: 0; background-image: linear-gradient(90deg, transparent calc(100% - 1px), var(--card) calc(100% - 1px)); background-size: calc(100% / var(--n, 64)) 100%; }
+.meter-need { position: absolute; left: var(--need-at, 100%); top: -6px; bottom: -6px; width: 0; border-left: 2px solid var(--ink); margin-left: -1px; z-index: 1; }
+.meter-old { position: absolute; left: var(--old-at, 90%); top: 100%; height: 8px; width: 0; border-left: 2px dotted var(--ink-soft); margin-left: -1px; }
+
+.season { display: grid; gap: 10px; max-width: 44rem; padding-block: 6px 10px; }
+.season h3 { font-size: var(--fs-5); }
+.season-intro { color: var(--ink-soft); }
+.season-kin { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-3); }
+.season ul { display: grid; gap: 6px; }
+.season li { position: relative; padding-left: 20px; }
+.season li::before { content: ""; position: absolute; left: 0; top: 0.75em; width: 10px; border-top: 1.5px solid var(--ink); }
+
+/* ---- leaving ---- */
+.leaving { gap: 16px; }
+.leaving h2 { font-size: var(--fs-4); color: var(--ink-soft); }
+.leave-list .way { grid-template-columns: 12.5rem minmax(0, 14rem) minmax(0, 1fr); }
+.leave-list .way-count { white-space: normal; }
+.leave-kin { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-3); }
+
+/* ---- the Afterwards ---- */
+.afterwards h2, .chronicle h2 { font-size: var(--fs-5); }
+.after-head { display: grid; gap: 4px; }
+.after-grid { display: grid; grid-template-columns: minmax(0, 27rem) minmax(0, 1fr); gap: 16px 48px; align-items: start; }
+.ring-fig { margin: 0; display: grid; gap: 8px; }
+#ring { display: block; width: 100%; height: auto; }
+.tie { stroke: var(--line); stroke-width: 1.2; fill: none; }
+.h-base { fill: var(--card); stroke: none; }
+.h-fill { fill: var(--straw); transition: y 420ms ease, height 420ms ease; }
+.h-rim { fill: none; stroke: var(--ink); stroke-width: 1.5; }
+.h-yours { fill: none; stroke: var(--straw); stroke-width: 3; opacity: 0; }
+.house.yours .h-yours { opacity: 1; }
+.h-name { font-family: var(--font-display); font-weight: 600; font-size: 12px; fill: var(--ink); text-anchor: middle; }
+.h-num { font-family: var(--font-display); font-weight: 800; font-size: 13px; fill: var(--ink-soft); text-anchor: middle; font-variant-numeric: tabular-nums; }
+/* the ties run behind the names: each name clears the ground under itself, so no line is drawn through a word */
+.h-name, .h-num { paint-order: stroke; stroke: var(--ground); stroke-width: 4px; stroke-linejoin: round; }
+.after-side { display: grid; gap: 12px; min-width: 0; }
+.season-count { font-family: var(--font-display); font-weight: 800; font-size: var(--fs-5); line-height: 1.1; font-variant-numeric: tabular-nums; }
+.flow { position: relative; height: 64px; margin-bottom: 18px; max-width: 34rem; }
+.flow-bars { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(30, minmax(0, 1fr)); gap: 2px; align-items: end; border-bottom: 1px solid var(--line); }
+.flow-bars i { display: block; height: 0; background: var(--ink-soft); }
+.flow-bars i.late { background: var(--ink); }
+.flow-line { position: absolute; left: 0; right: 0; bottom: 50%; border-top: 1.5px dashed var(--water-crest); }
+.flow-ten { position: absolute; left: 66.667%; right: 0; top: 100%; margin-top: 4px; border-top: 1.5px solid var(--ink); text-align: center; font-family: var(--font-display); font-size: var(--fs-0); line-height: 1.4; color: var(--ink-soft); }
+.after-end { display: grid; gap: 6px; }
+.after-yours { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-3); }
+.counting { font-family: var(--font-display); font-size: var(--fs-1); font-variant-numeric: tabular-nums; color: var(--ink-soft); }
+.ticker { display: grid; gap: 5px; align-content: start; height: 10.5rem; overflow-y: auto; font-size: var(--fs-1); line-height: 1.4; max-width: 34rem; }
+.ticker.done { height: auto; overflow: visible; }
+.ticker li.yours { font-weight: 600; }
+
+/* ---- the Chronicle ---- */
+.chronicle { gap: 26px; }
+.chronicle section { display: grid; gap: 6px; min-width: 0; }
+.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 20px 48px; align-items: start; }
+.seal { display: flex; align-items: center; gap: 14px; padding-block: 4px; }
+.seal svg { flex: none; width: 64px; height: 64px; }
+.seal-ring { fill: none; stroke: var(--ink); stroke-width: 2; }
+.seal-dot { fill: var(--ink); }
+.seal-store { fill: var(--straw); stroke: var(--ink); stroke-width: 1.5; }
+.seal p { font-family: var(--font-display); font-weight: 800; font-size: var(--fs-4); line-height: 1.15; }
+.chronicle .rows { gap: 10px; }
+.row { display: grid; grid-template-columns: 7rem minmax(0, 1fr); gap: 6px 14px; align-items: start; }
+.row h4 { font-size: var(--fs-1); font-weight: 600; padding-top: 1px; }
+.marks { display: grid; grid-template-columns: repeat(50, minmax(0, 1fr)); gap: 2px; max-width: 46rem; }
+.marks i { display: block; aspect-ratio: 1 / 1; border: 1.5px solid var(--ink-soft); }
+.marks i.held { background: var(--ink); border-color: var(--ink); }
+.scale { position: relative; height: 92px; margin: 4px 14px 0; max-width: 44rem; }
+.sc-axis { position: absolute; left: 0; right: 0; top: 34px; border-top: 2px solid var(--ink); }
+.sc-tick { position: absolute; top: 27px; height: 16px; width: 0; border-left: 2px solid var(--ink); margin-left: -1px; }
+.sc-mark { position: absolute; top: 35px; width: 0; height: 0; }
+.sc-mark::before { content: ""; position: absolute; border-radius: 50%; }
+.sc-you::before { left: -7px; top: -7px; width: 14px; height: 14px; background: var(--straw); border: 1.5px solid var(--ink); z-index: 1; }
+.sc-old::before { left: -11px; top: -11px; width: 22px; height: 22px; background: var(--ground); border: 2px solid var(--ink); }
+.sc-label { position: absolute; left: 0; transform: translateX(-50%); white-space: nowrap; font-family: var(--font-display); font-size: var(--fs-0); line-height: 1.2; font-variant-numeric: tabular-nums; }
+.sc-label.at-start { transform: none; left: -10px; }
+.sc-label.at-end { transform: none; left: auto; right: -10px; }
+.sc-you .sc-label { top: -31px; font-weight: 800; font-size: var(--fs-1); }
+.sc-tick .sc-label { top: 21px; color: var(--ink-soft); }
+.sc-old .sc-label { top: 36px; font-weight: 600; }
+.became { display: grid; gap: 5px; }
+.became li { position: relative; padding-left: 20px; }
+.became li::before { content: ""; position: absolute; left: 0; top: 0.75em; width: 10px; border-top: 1.5px solid var(--ink); }
+.became li.closing { font-weight: 600; padding-left: 0; margin-top: 4px; }
+.became li.closing::before { content: none; }
+.valley-no { font-family: var(--font-display); font-variant-numeric: tabular-nums; }
+
+@media (max-width: 1180px) {
+  .near .way { grid-template-columns: minmax(0, 1fr) auto; }
+  .near .way-marks { grid-column: 1 / -1; grid-row: 2; }
+}
+@media (max-width: 980px) {
+  .near { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .day-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+  .day-actions .btn { width: auto; }
+  .leave-list .way { grid-template-columns: 12.5rem minmax(0, 8rem) minmax(0, 1fr); }
+}
+@media (max-width: 760px) {
+  :root { --pad: 10px; --gap: 10px; }
+  .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .near, .op-near, .after-grid, .two { grid-template-columns: minmax(0, 1fr); }
+  .day-actions { display: grid; }
+  .day-actions .btn { width: 100%; }
+  .way, .leave-list .way { grid-template-columns: minmax(0, 1fr) auto; }
+  .way-marks { grid-column: 1 / -1; grid-row: 2; }
+  .leave-list .way { grid-template-columns: minmax(0, 1fr); }
+  .leave-list .way-marks { grid-row: auto; }
+  .marks { grid-template-columns: repeat(25, minmax(0, 1fr)); }
+  .row { grid-template-columns: minmax(0, 1fr); }
+  .lede { font-size: var(--fs-3); }
+  .op-lines li { font-size: var(--fs-2); }
+  .statement { font-size: var(--fs-4); }
+  .card-line { min-height: 0; }
+  .back-situation { font-size: var(--fs-3); }
+  .ring-fig { max-width: 26rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .card.turn-out .turn, .card.turn-in .turn { animation: none; }
+  .h-fill { transition: none; }
+}
+</style>
+
+<div class="page" id="page">
+
+  <section class="view opening" data-view="opening">
+    <h1 id="opening-title" tabindex="-1">After You</h1>
+    <p class="lede" id="op-lede">Twelve days of harvest in a valley of eight houses. Then you leave, and the valley goes on without you.</p>
+    <div class="op-ford" aria-hidden="true">
+      <span class="op-note op-note-far" id="op-far">worth 3 to them</span>
+      <span class="ford"><span class="ford-name" id="op-ford-name">the ford</span></span>
+      <span class="op-stem"></span>
+      <span class="op-disc"></span>
+      <span class="op-note op-note-near" id="op-near">costs you 1</span>
+    </div>
+    <div class="op-near">
+      <div>
+        <ul class="op-lines" id="op-lines">
+          <li>Each day, each of your four neighbours has a crop that will not wait. You can send a hand or stay home. So can they.</li>
+          <li>A hand sent costs you 1 measure of your own grain. A hand that arrives is worth 3 to the house it reaches.</li>
+          <li>What you do, others see. Some will take it up as their own way.</li>
+        </ul>
+        <div class="op-begin"><button type="button" class="btn" id="begin">Begin</button></div>
+      </div>
+      <section class="lives" id="op-lives" aria-labelledby="op-lives-title" hidden>
+        <h2 class="label" id="op-lives-title">Earlier lives</h2>
+        <ul class="lives-list" id="op-lives-list"></ul>
+      </section>
+    </div>
+  </section>
+
+  <section class="view day" data-view="day" hidden>
+    <header class="daybar">
+      <div class="daybar-day">
+        <h2 id="day-title" tabindex="-1">Day 1 of 12</h2>
+        <ol class="track" id="day-track" aria-hidden="true"></ol>
+        <span class="day-last" id="day-last" hidden>The last day.</span>
+      </div>
+      <p class="day-total" id="day-total" aria-live="polite"></p>
+    </header>
+
+    <div class="season" id="season" hidden>
+      <h3 id="season-title" tabindex="-1">Season's end</h3>
+      <p class="season-intro" id="season-intro"></p>
+      <p class="season-kin" id="season-kin"></p>
+      <ul id="season-changes"></ul>
+      <ul id="season-houses"></ul>
+    </div>
+
+    <div class="bank" id="bank">
+      <div class="cards" id="cards"></div>
+      <section class="elsewhere" id="elsewhere" aria-labelledby="elsewhere-title" hidden>
+        <h3 id="elsewhere-title">Elsewhere today</h3>
+        <ul class="else-list" id="elsewhere-list"></ul>
+      </section>
+    </div>
+
+    <div class="near">
+      <div class="day-actions">
+        <button type="button" class="btn" id="close-day" disabled>Choose for 4 more houses</button>
+        <button type="button" class="btn" id="next-day" hidden>Next day</button>
+        <p class="small" id="small-print">A hand can be turned back at the ford. You only ever see whether one arrived.</p>
+      </div>
+      <section aria-labelledby="ways-title">
+        <h3 id="ways-title">Your ways</h3>
+        <ol class="ways-list" id="ways-list"></ol>
+      </section>
+      <section aria-labelledby="store-title">
+        <h3 id="store-title">Winter store</h3>
+        <p class="store-count" id="store-count"></p>
+        <div class="meter" id="store-meter" aria-hidden="true"><span class="meter-fill"></span><span class="meter-need"></span><span class="meter-old"></span></div>
+        <p class="small" id="store-old"></p>
+      </section>
+    </div>
+  </section>
+
+  <section class="view leaving" data-view="leaving" hidden>
+    <h2 id="leaving-title" tabindex="-1">The harvest is in.</h2>
+    <p class="statement" id="leaving-store"></p>
+    <div class="meter" id="leaving-meter" aria-hidden="true"><span class="meter-fill"></span><span class="meter-need"></span></div>
+    <section aria-labelledby="leave-title">
+      <h3 id="leave-title">What you leave</h3>
+      <ol class="ways-list leave-list" id="leaving-ways"></ol>
+    </section>
+    <p class="leave-kin" id="leaving-kin"></p>
+    <div class="actions"><button type="button" class="btn" id="leave">Leave the valley</button></div>
+  </section>
+
+  <section class="view afterwards" data-view="afterwards" hidden>
+    <header class="after-head">
+      <h2 id="after-title" tabindex="-1">Thirty seasons without you.</h2>
+      <p class="small" id="after-one"></p>
+    </header>
+    <div class="after-grid">
+      <figure class="ring-fig">
+        <svg id="ring" viewBox="0 0 400 440" role="img" aria-labelledby="after-title"></svg>
+        <figcaption class="small" id="ring-legend"></figcaption>
+      </figure>
+      <div class="after-side">
+        <p class="season-count" id="season-count"></p>
+        <div class="flow" aria-hidden="true">
+          <div class="flow-bars" id="flow-bars"></div>
+          <span class="flow-line" id="flow-line"></span>
+          <span class="flow-ten" id="flow-ten"></span>
+        </div>
+        <p class="small" id="flow-caption"></p>
+        <div class="after-end" id="after-end" hidden>
+          <p class="statement" id="after-held"></p>
+          <p class="after-yours" id="after-yours"></p>
+        </div>
+        <p class="counting" id="after-counting" hidden></p>
+        <div class="actions">
+          <button type="button" class="btn quiet" id="skip">Skip</button>
+          <button type="button" class="btn" id="to-chronicle" hidden>See the count</button>
+        </div>
+        <section aria-labelledby="ticker-title">
+          <h3 id="ticker-title">What happened</h3>
+          <ol class="ticker" id="ticker" role="log" aria-live="polite" tabindex="0" aria-labelledby="ticker-title"></ol>
+        </section>
+      </div>
+    </div>
+  </section>
+
+  <section class="view chronicle" data-view="chronicle" hidden>
+    <h2 id="chronicle-title" tabindex="-1">The count</h2>
+    <div class="two">
+      <section aria-labelledby="c-house-title">
+        <h3 id="c-house-title">House</h3>
+        <p class="statement" id="c-house"></p>
+      </section>
+      <section aria-labelledby="c-valley-title">
+        <h3 id="c-valley-title">Valley</h3>
+        <p class="prose" id="c-valley"></p>
+        <p class="statement" id="c-mark"></p>
+        <p class="small" id="c-mark-note"></p>
+      </section>
+    </div>
+    <div class="seal" id="c-seal" hidden>
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <circle class="seal-ring" cx="32" cy="32" r="30"></circle>
+        <circle class="seal-ring" cx="32" cy="32" r="25"></circle>
+        <circle class="seal-dot" cx="32" cy="13" r="2.4"></circle><circle class="seal-dot" cx="45.4" cy="18.6" r="2.4"></circle>
+        <circle class="seal-dot" cx="51" cy="32" r="2.4"></circle><circle class="seal-dot" cx="45.4" cy="45.4" r="2.4"></circle>
+        <circle class="seal-dot" cx="32" cy="51" r="2.4"></circle><circle class="seal-dot" cx="18.6" cy="45.4" r="2.4"></circle>
+        <circle class="seal-dot" cx="13" cy="32" r="2.4"></circle><circle class="seal-dot" cx="18.6" cy="18.6" r="2.4"></circle>
+        <circle class="seal-store" cx="32" cy="32" r="9"></circle>
+      </svg>
+      <p id="c-seal-line">House kept, valley better off.</p>
+    </div>
+    <section class="rows">
+      <div class="row"><h4 id="c-row-you">With you</h4><div class="marks" id="c-held" role="img" aria-labelledby="c-row-you"></div></div>
+      <div class="row"><h4 id="c-row-old">The old way</h4><div class="marks" id="c-base" role="img" aria-labelledby="c-row-old"></div></div>
+      <p class="small" id="c-rows-caption"></p>
+      <p class="prose" id="c-explain-1"></p>
+      <p class="prose" id="c-explain-2"></p>
+    </section>
+    <section id="c-sits" aria-labelledby="c-sits-title">
+      <h3 id="c-sits-title">Where that sits</h3>
+      <div class="scale" id="c-scale" aria-hidden="true"></div>
+      <p class="prose" id="c-range"></p>
+    </section>
+    <section id="c-last-section" aria-labelledby="c-last-title" hidden>
+      <h3 id="c-last-title">The last day</h3>
+      <p class="prose" id="c-last"></p>
+    </section>
+    <section aria-labelledby="c-mattered-title">
+      <h3 id="c-mattered-title">The way that mattered most</h3>
+      <p class="prose" id="c-mattered"></p>
+    </section>
+    <section aria-labelledby="c-became-title">
+      <h3 id="c-became-title">In the future you watched</h3>
+      <ul class="became prose" id="c-became"></ul>
+    </section>
+    <p class="small valley-no" id="c-valley-no"></p>
+    <div class="actions">
+      <button type="button" class="btn" id="again">Live another life</button>
+      <button type="button" class="btn quiet" id="again-same">Live this valley again</button>
+    </div>
+    <section class="lives" id="c-lives" aria-labelledby="c-lives-title" hidden>
+      <h3 id="c-lives-title">Earlier lives</h3>
+      <ul class="lives-list" id="c-lives-list"></ul>
+    </section>
+  </section>
+
+</div>
+<script src="engine.js"></script><script src="words.js"></script><script src="app.js"></script>
+</body></html>

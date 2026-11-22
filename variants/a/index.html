@@ -1,0 +1,586 @@
+<title>After You</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Vollkorn:ital,wght@0,400;0,600;0,700;1,400&display=swap">
+<style>
+  :root {
+    /* After You, direction A: "Tally stick".
+       Layout: hung from the left, never centred. The harvest is a notched stick across the top;
+       four houses sit two by two on the left; a narrow rail on the right keeps your own counts
+       (the store rod, your ways). Everything counted is a cut or a stroke: full and solid for a
+       hand sent or a future that held, shallow and open, or fallen flat, for the other thing. */
+    --ground:    #e6ebe7;   /* limewash: a cool pale grey with a little green in it */
+    --surface:   #f2f5f1;   /* fresh lime, on the four house cards only */
+    --ink:       #222c34;   /* slate */
+    --quiet:     #54626a;   /* slate, thinned */
+    --cut:       #b4bfb9;   /* a cut not yet made: rules and empty marks */
+    --rye:       #bd8a2c;   /* rye gold: grain and the store */
+    --rye-ink:   #76540c;   /* rye where it has to be read as text */
+    --plum:      #7a3a6b;   /* whatever came from you */
+    --ford:      #1f6d76;   /* the ford */
+
+    --font-display: 'Vollkorn', 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;   /* names, and the numbers that matter */
+    --font-ui: 'Instrument Sans', 'Avenir Next', 'Segoe UI', system-ui, -apple-system, sans-serif;   /* everything you operate */
+
+    --t-1: 12.5px;  --t-2: 14px;  --t-3: 16px;  --t-4: 20px;  --t-5: 28px;  --t-6: 46px;  --t-7: 80px;
+    --measure: 65ch;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:  #1b2229;   /* slate ground */
+      --surface: #242d35;
+      --ink:     #e1e7e2;   /* limewash ink */
+      --quiet:   #9dabad;
+      --cut:     #44525b;
+      --rye:     #d3a244;
+      --rye-ink: #e3bc6a;
+      --plum:    #d39cc6;
+      --ford:    #7cc3c9;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:  #1b2229;
+    --surface: #242d35;
+    --ink:     #e1e7e2;
+    --quiet:   #9dabad;
+    --cut:     #44525b;
+    --rye:     #d3a244;
+    --rye-ink: #e3bc6a;
+    --plum:    #d39cc6;
+    --ford:    #7cc3c9;
+    color-scheme: dark;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font: 400 16px/1.5 var(--font-ui);
+    -webkit-text-size-adjust: 100%;
+  }
+  .ay {
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 20px 56px;
+  }
+  .ay-page { max-width: 1140px; min-width: 0; margin-left: clamp(0px, calc((100vw - 900px) * 0.2), 56px); }
+  .view { min-width: 0; }
+
+  h1, h2, h3, p, ul, ol, dl, dd, figure, fieldset { margin: 0; padding: 0; }
+  h1, h2, h3 { text-wrap: balance; }
+  ul, ol { list-style: none; }
+  fieldset { border: 0; min-width: 0; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .glyphs { position: absolute; width: 0; height: 0; overflow: hidden; }
+  .view-title { font: 600 var(--t-5)/1.1 var(--font-display); font-variant-numeric: lining-nums tabular-nums; }
+  .view-title:focus, .focus-quiet:focus { outline: none; }
+  .label { font: 600 var(--t-1)/1.3 var(--font-ui); color: var(--quiet); }
+  .small { font-size: var(--t-1); line-height: 1.45; color: var(--quiet); }
+  :focus-visible { outline: 2.5px solid var(--ford); outline-offset: 2px; }
+
+  .btn {
+    font: 600 var(--t-3)/1.2 var(--font-ui);
+    color: var(--ink);
+    background: transparent;
+    border: 1.5px solid var(--ink);
+    border-radius: 3px;
+    padding: 12px 20px;
+    min-height: 46px;
+    cursor: pointer;
+  }
+  .btn-primary { background: var(--ink); color: var(--ground); }
+  .btn:hover:not(:disabled) { box-shadow: inset 0 0 0 1.5px var(--ink); }
+  .btn-primary:hover:not(:disabled) { box-shadow: 0 0 0 1.5px var(--ink); }
+  .btn:disabled { background: transparent; color: var(--quiet); border: 1.5px dashed var(--quiet); cursor: default; }
+  .btn-quiet { border-color: transparent; padding-inline: 6px; text-decoration: underline; text-underline-offset: 4px; font-weight: 500; }
+  .btn-small { font-size: var(--t-2); padding: 5px 12px; min-height: 32px; }
+
+  .ford-mark { width: 22px; height: 10px; flex: none; color: var(--ford); vertical-align: middle; margin-right: 6px; }
+  .ford-mark use, .ford-wave use { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+
+  /* ---- cuts: one mark per deed, on a stick -------------------------------------------------- */
+  .cuts {
+    --c: var(--plum);
+    display: flex; flex-wrap: wrap; column-gap: 3px;
+    min-height: 20px;
+    background: repeating-linear-gradient(to bottom, var(--ink) 0, var(--ink) 1.5px, transparent 1.5px, transparent 20px);
+  }
+  .cuts.theirs { --c: var(--ink); }
+  .cuts.empty { background: repeating-linear-gradient(to right, var(--cut) 0, var(--cut) 5px, transparent 5px, transparent 10px) top left / 100% 1.5px no-repeat; }
+  .cut { position: relative; width: 5px; height: 20px; flex: none; }
+  .cut::before { content: ''; position: absolute; left: 0; top: 0; width: 5px; }
+  .cut.full::before { height: 15px; background: var(--c); }
+  .cut.shallow::before { height: 7px; border: 1.5px solid var(--c); border-top: 0; }
+  .cut.fresh::after { content: ''; position: absolute; left: 0; bottom: 0; width: 5px; height: 2px; background: var(--ink); }
+  .cut.pending.full::before { background: transparent; border: 1.5px dotted var(--c); border-top: 0; }
+  .cut.pending.shallow::before { border-style: dotted; }
+  .cut.gap { width: 3px; }
+  .cut.gap::before { display: none; }
+
+  /* ---- opening ------------------------------------------------------------------------------ */
+  .opening { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 4fr); gap: 24px 56px; align-items: start; padding-top: clamp(4px, 5vh, 56px); }
+  .op-title { font: 700 clamp(var(--t-6), 9vw, var(--t-7))/0.95 var(--font-display); letter-spacing: -0.012em; }
+  .stick.op-stick { margin: 20px 0 26px; max-width: 520px; }
+  .op-premise p { max-width: 58ch; margin-bottom: 10px; }
+  .op-premise p:first-child { font: 400 var(--t-4)/1.35 var(--font-display); margin-bottom: 14px; }
+  .stakes { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 6px 14px; margin: 18px 0 26px; color: var(--quiet); font-size: var(--t-1); }
+  .stake { display: inline-flex; align-items: flex-end; gap: 3px; }
+  .stake b { font-weight: 500; margin-left: 6px; }
+  .grain { width: 5px; height: 18px; background: var(--rye); flex: none; }
+  .ford-wave { width: 44px; height: 12px; color: var(--ford); flex: none; margin-bottom: 3px; }
+  .op-past { padding-top: clamp(0px, 3vh, 34px); min-width: 0; }
+  .past-list { margin-top: 8px; font-size: var(--t-2); font-variant-numeric: tabular-nums; }
+  .past-list li { padding: 5px 0; }
+  .past-list li.sealed { color: var(--plum); font-weight: 500; }
+
+  /* ---- the day ------------------------------------------------------------------------------ */
+  .day-head { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 32px; align-items: end; margin-bottom: 12px; }
+  /* the day's total, above the cards; its line is kept free while you choose so that nothing moves at the reveal */
+  .day-result { grid-column: 1 / -1; min-height: 1.25em; font: 600 var(--t-4)/1.25 var(--font-display); font-variant-numeric: lining-nums tabular-nums; }
+  .last-note { font: italic 400 var(--t-4)/1.1 var(--font-display); color: var(--rye-ink); margin-left: 4px; }
+
+  /* the tally stick: twelve notches, three seasons of four */
+  .stick {
+    display: flex; align-items: stretch; gap: 26px;
+    height: 32px; padding: 0 18px;
+    background: var(--surface);
+    border: 1.5px solid var(--ink); border-radius: 2px 16px 16px 2px;
+    margin-bottom: 12px;
+  }
+  .stick-group { flex: 1; display: flex; justify-content: space-around; align-items: flex-start; min-width: 0; }
+  .notch { position: relative; width: 4px; height: 26%; background: var(--cut); flex: none; }
+  .notch.spent { height: 64%; background: var(--ink); }
+  .notch.today { width: 6px; height: 100%; background: var(--rye); }
+  .notch.today::after {
+    content: ''; position: absolute; left: 50%; top: calc(100% + 4px);
+    border: 5px solid transparent; border-top: 0; border-bottom: 7px solid var(--ink);
+    transform: translateX(-50%);
+  }
+
+  .day-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 316px);
+    grid-template-areas: "main store" "main ways";
+    grid-template-rows: auto 1fr;
+    column-gap: 40px; row-gap: 26px;
+    align-items: start;
+  }
+  .day-main { grid-area: main; min-width: 0; container-type: inline-size; }
+  .store { grid-area: store; min-width: 0; }
+  .ways { grid-area: ways; min-width: 0; }
+
+  .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  @container (max-width: 560px) { .cards { grid-template-columns: minmax(0, 1fr); } }
+
+  .card { display: grid; perspective: 1400px; min-width: 0; }
+  .card-inner { display: grid; min-width: 0; transform-style: preserve-3d; transition: transform 0.6s cubic-bezier(0.4, 0.1, 0.2, 1); }
+  .card.flipped .card-inner { transform: rotateY(180deg); }
+  .face {
+    grid-area: 1 / 1; min-width: 0;
+    display: flex; flex-direction: column; gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--cut); border-radius: 3px;
+    padding: 12px 14px 10px;
+    backface-visibility: hidden; -webkit-backface-visibility: hidden;
+    transition: visibility 0s linear 0.6s;          /* the face turned away is hidden once the turn is over */
+  }
+  .face.back { transform: rotateY(180deg); visibility: hidden; }
+  .card.flipped .face.back { visibility: visible; transition-delay: 0s; }
+  .card.flipped .face.front { visibility: hidden; }
+  .card:not(.flipped) .face.front { transition-delay: 0s; }
+
+  .card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .card-names { min-width: 0; }
+  .card-title { font: 600 var(--t-4)/1.15 var(--font-display); }
+  .card.kin .card-title, .back-title.kin { color: var(--plum); }
+  .kin-mark { display: inline-block; width: 11px; height: 13px; margin-right: 7px; border-inline: 3px solid var(--plum); vertical-align: -1px; }
+  .card-sub { font-size: var(--t-1); line-height: 1.4; color: var(--quiet); min-height: 1.4em; }
+  .card-sub.yours { color: var(--plum); font-weight: 500; }
+  .card-line { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; font-size: var(--t-2); line-height: 1.4; min-height: 2.8em; }
+  .card-line .txt { min-width: 0; }
+  .delta { font: 700 var(--t-5)/0.95 var(--font-display); font-variant-numeric: lining-nums tabular-nums; white-space: nowrap; }
+  .delta.gain { color: var(--rye-ink); }
+  .delta.none { color: var(--quiet); }
+
+  .choice-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; position: relative; }
+  /* each radio lies unseen over its own label, in the same cell, and takes the click itself */
+  .choice-row input { width: 100%; height: 100%; margin: 0; opacity: 0; z-index: 1; cursor: pointer; appearance: none; -webkit-appearance: none; }
+  .choice-row input[value="send"], .opt-send { grid-area: 1 / 1; }
+  .choice-row input[value="stay"], .opt-stay { grid-area: 1 / 2; }
+  .choice-row input:disabled { cursor: default; }
+  .opt {
+    display: flex; align-items: center; justify-content: center; gap: 9px;
+    min-height: 44px; padding: 6px 8px;
+    border: 1.5px solid var(--cut); border-radius: 3px;
+    font: 600 var(--t-2)/1.15 var(--font-ui); color: var(--ink);
+    cursor: pointer; user-select: none; -webkit-user-select: none;
+  }
+  .opt:hover, .choice-row input:not(:disabled):hover + .opt { border-color: var(--ink); }
+  .opt .cut { --c: currentColor; height: 15px; }
+  .opt .cut.shallow { align-self: center; }
+  .opt .cut.shallow::before { top: 8px; }
+  input:checked + .opt-send { background: var(--ink); border-color: var(--ink); color: var(--ground); }
+  input:checked + .opt-stay { border-color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--ink); }
+  input:focus-visible + .opt { outline: 2.5px solid var(--ford); outline-offset: 2px; }
+  input:disabled + .opt { cursor: default; }
+  input:disabled:not(:checked) + .opt { border-style: dashed; border-color: var(--cut); color: var(--quiet); }
+  input:disabled:not(:checked) + .opt .cut { opacity: 0.5; }
+
+  .why-btn { flex: none; }
+  .why-btn.led::before { content: ''; display: inline-block; width: 4px; height: 12px; margin-right: 13px; background: var(--plum); box-shadow: 6px 0 0 var(--plum); vertical-align: -1px; }
+  .why-btn.led { border-color: var(--plum); color: var(--plum); }
+
+  .know-now { display: none; font-size: var(--t-1); line-height: 1.4; }
+  .know-now b { display: block; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .know { border-top: 1px solid var(--cut); padding-top: 8px; margin-top: auto; }
+  .know summary { list-style: none; display: flex; align-items: center; gap: 8px; cursor: default; pointer-events: none; }
+  .know summary::-webkit-details-marker { display: none; }
+  .know-rows { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1px 12px; margin-top: 5px; font-size: var(--t-1); line-height: 1.36; font-variant-numeric: tabular-nums; }
+  .know-rows dt { min-width: 0; color: var(--quiet); }
+  .know-rows dd { text-align: right; white-space: nowrap; }
+  .know-rows dd.unseen { color: var(--quiet); font-style: italic; }
+  .know-rows dt.now { color: var(--ink); font-weight: 600; }
+  .know-rows dt.now::before { content: ''; display: inline-block; margin-right: 6px; border: 4px solid transparent; border-right: 0; border-left: 6px solid var(--ink); }
+  .know-rows dd.now { font-weight: 600; }
+  .tag { display: inline-block; margin-left: 6px; padding: 0 5px; border: 1px solid var(--ink); border-radius: 2px; font-size: var(--t-1); font-weight: 600; line-height: 1.25; }
+  .know .small { margin-top: 5px; }
+  .know-changed { font-size: var(--t-1); line-height: 1.4; margin-top: 6px; }
+
+  /* the back of a card */
+  .back-title { font: 600 var(--t-2)/1.2 var(--font-display); color: var(--quiet); }
+  .why-stood { font: 600 var(--t-1)/1.3 var(--font-ui); color: var(--quiet); }
+  .why-claim { font: 600 var(--t-4)/1.25 var(--font-display); text-wrap: balance; }
+  .why-claim.yours { color: var(--plum); }
+  .why-count { font-size: var(--t-2); line-height: 1.4; font-variant-numeric: tabular-nums; }
+  .why-deeds { font-size: var(--t-2); line-height: 1.4; font-variant-numeric: tabular-nums; }
+  .why-deeds li { padding-left: 14px; text-indent: -14px; margin-top: 4px; }
+  .why-deeds li.more { color: var(--quiet); padding-left: 0; text-indent: 0; }
+  .why-close { font: italic 400 var(--t-3)/1.3 var(--font-display); }
+  .why-body { display: flex; flex-direction: column; gap: 9px; }
+  .back .btn { align-self: flex-start; margin-top: auto; }
+
+  .elsewhere { margin-top: 18px; font-size: var(--t-2); line-height: 1.45; }
+  .else-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 6px; }
+  .else-why { margin: 8px 0 14px 0; padding-left: 18px; max-width: 46ch; }
+
+  .actions {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px;
+    position: sticky; bottom: 0; z-index: 3;
+    margin-top: 14px; padding: 10px 0 12px;
+    background: var(--ground); border-top: 1.5px solid var(--ink);
+  }
+  .day-echo { display: none; min-width: 0; font: 600 var(--t-3)/1.25 var(--font-display); font-variant-numeric: lining-nums tabular-nums; }
+  .ford-note { margin-top: 12px; display: flex; align-items: center; }
+
+  .season-end { max-width: 60ch; padding-bottom: 6px; }
+  .season-end h2 { font: 600 var(--t-5)/1.1 var(--font-display); }
+  .season-intro { color: var(--quiet); margin: 8px 0 20px; }
+  .season-kin li:first-child { font: 600 var(--t-4)/1.3 var(--font-display); font-variant-numeric: lining-nums tabular-nums; color: var(--plum); }
+  .season-kin li + li { margin-top: 6px; padding-left: 18px; }
+  .season-others { margin-top: 18px; }
+  .season-others li { margin-top: 6px; }
+  .season-others li.yours { color: var(--plum); font-weight: 600; }
+
+  /* the right rail: the store rod and your ways */
+  .store-num { font: 400 var(--t-2)/1.2 var(--font-ui); color: var(--quiet); margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .store-num b { font: 700 var(--t-6)/0.9 var(--font-display); color: var(--ink); font-variant-numeric: lining-nums tabular-nums; margin-right: 4px; }
+  .rod { position: relative; height: 16px; margin: 30px 0 10px; border: 1.5px solid var(--ink); background: var(--surface); }
+  .rod-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--rye); }
+  .rod-ticks {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 45%;
+    background: repeating-linear-gradient(to right, transparent 0, transparent calc(100% / var(--steps, 20) - 1.5px), var(--ink) calc(100% / var(--steps, 20) - 1.5px), var(--ink) calc(100% / var(--steps, 20)));
+    opacity: 0.55;
+  }
+  .rod-need { position: absolute; top: -9px; bottom: -6px; width: 0; border-left: 2.5px solid var(--ink); }
+  .rod-need span { position: absolute; left: 0; bottom: 100%; transform: translateX(-50%); white-space: nowrap; font: 600 var(--t-1)/1.5 var(--font-ui); font-variant-numeric: tabular-nums; }
+  .store .small { max-width: 44ch; }
+
+  .ways h2, .store h2 { font: 600 var(--t-2)/1.3 var(--font-ui); }
+  .ways h2 { color: var(--plum); }
+  .way { margin-top: 12px; }
+  .way-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0 10px; margin-bottom: 4px; }
+  .way-title { font: 600 var(--t-2)/1.3 var(--font-display); }
+  .way-count { font-size: var(--t-1); color: var(--quiet); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .way.untested .way-title, .leave-row.untested .way-title { color: var(--quiet); font-weight: 400; }
+  .way.untested .way-count { font-style: italic; }
+  .ways .small { margin-top: 12px; }
+
+  /* ---- leaving ------------------------------------------------------------------------------ */
+  .leaving-grid {
+    display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    grid-template-areas: "store rows" "go rows"; grid-template-rows: auto 1fr;
+    gap: 26px 56px; align-items: start; margin-top: 18px;
+  }
+  .leave-store { grid-area: store; min-width: 0; }
+  .leave-list { grid-area: rows; min-width: 0; }
+  .leave-go { grid-area: go; min-width: 0; }
+  .statement { font: 600 var(--t-5)/1.2 var(--font-display); font-variant-numeric: lining-nums tabular-nums; text-wrap: balance; max-width: 22ch; }
+  .leaving .rod { max-width: 380px; margin-top: 36px; }
+  .leave-rows { margin-top: 4px; }
+  .leave-row { margin-top: 14px; max-width: 48ch; }
+  .leave-row .way-title { font-size: var(--t-3); }
+  .leave-row p { font-size: var(--t-2); font-variant-numeric: tabular-nums; margin-bottom: 4px; }
+  .leave-kin { font: 600 var(--t-4)/1.3 var(--font-display); font-variant-numeric: lining-nums tabular-nums; color: var(--plum); max-width: 30ch; text-wrap: balance; }
+  .leaving .btn { margin-top: 22px; }
+
+  /* ---- the Afterwards ----------------------------------------------------------------------- */
+  .after-grid { display: grid; grid-template-columns: minmax(0, 470px) minmax(0, 380px); gap: 24px 52px; align-items: start; margin-top: 10px; }
+  .ring { display: block; width: 100%; height: auto; }
+  .ring .tie { stroke: var(--cut); stroke-width: 1; }
+  .ring .plate { fill: var(--ground); }
+  .ring .glyph { fill: var(--ground); stroke: var(--ink); stroke-width: 1.5; }
+  .ring .glyph-outer { fill: none; stroke: var(--plum); stroke-width: 1.5; visibility: hidden; }
+  .ring .yours .glyph { fill: var(--plum); stroke: var(--plum); }
+  .ring .yours .glyph-outer { visibility: visible; }
+  .ring .hname { font: 600 13px var(--font-display); fill: var(--ink); text-anchor: middle; }
+  .ring .yours .hname { fill: var(--plum); }
+  .ring .hand { stroke: var(--cut); stroke-width: 2; stroke-linecap: butt; }
+  .ring .hand.up { stroke: var(--ink); }
+  .ring .inc { font: 600 13px var(--font-display); font-variant-numeric: lining-nums tabular-nums; fill: var(--rye-ink); text-anchor: end; }
+  .ring .season-word { font: 600 12.5px var(--font-ui); fill: var(--quiet); text-anchor: middle; }
+  .ring .season-num { font: 700 72px var(--font-display); font-variant-numeric: lining-nums tabular-nums; fill: var(--ink); text-anchor: middle; }
+
+  .flow-wrap { margin-top: 20px; max-width: 470px; }
+  .flow { position: relative; display: grid; grid-template-columns: repeat(30, minmax(0, 1fr)); grid-template-rows: 52px; align-items: end; height: 53.5px; border-bottom: 1.5px solid var(--ink); }
+  .flow i { justify-self: center; width: 3px; height: 0; background: var(--ink); }
+  .flow i.late { width: 5px; }
+  .flow::before { content: ''; position: absolute; left: 0; right: 0; top: 25.25px; border-top: 1.5px dashed var(--quiet); }
+  .flow-last { margin-left: 66.666%; margin-top: 4px; border: 1.5px solid var(--quiet); border-top: 0; height: 6px; }
+  .flow-last-label { margin-left: 66.666%; text-align: center; }
+  .flow-wrap .small { margin-top: 4px; }
+
+  .after-ring, .after-rail { min-width: 0; }
+  .legend { margin-top: 24px; }
+  .after-latest { display: none; min-height: 2.8em; margin-top: 4px; font-size: var(--t-2); line-height: 1.4; font-variant-numeric: tabular-nums; }
+  .legend li { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; align-items: center; margin-top: 6px; font-size: var(--t-1); line-height: 1.4; color: var(--quiet); }
+  .legend svg { width: 30px; height: 16px; }
+  .legend .l-up { stroke: var(--ink); stroke-width: 2; }
+  .legend .l-down { stroke: var(--cut); stroke-width: 2; }
+  .legend .l-inc { font: 600 13px var(--font-display); font-variant-numeric: lining-nums tabular-nums; fill: var(--rye-ink); }
+  .legend .l-glyph { fill: var(--plum); stroke: var(--plum); stroke-width: 1.5; }
+  .legend .l-outer { fill: none; stroke: var(--plum); stroke-width: 1.5; }
+  .ticker-head { margin-top: 22px; }
+  .ticker { margin-top: 6px; max-height: 300px; overflow-y: auto; font-size: var(--t-2); line-height: 1.4; font-variant-numeric: tabular-nums; }
+  .ticker li { margin-top: 6px; padding-left: 16px; position: relative; }
+  .ticker li.yours { color: var(--plum); font-weight: 500; }
+  .ticker li.yours::before { content: ''; position: absolute; left: 0; top: 3px; width: 3px; height: 12px; background: var(--plum); box-shadow: 5px 0 0 var(--plum); }
+  .ticker li.empty { color: var(--quiet); padding-left: 0; }
+  .after-end { margin-top: 14px; }
+  .after-end p:first-child { font: 600 var(--t-5)/1.15 var(--font-display); text-wrap: balance; }
+  .after-end p + p { margin-top: 6px; font: 400 var(--t-4)/1.3 var(--font-display); font-variant-numeric: lining-nums tabular-nums; }
+  .counting { margin-top: 14px; font-variant-numeric: tabular-nums; color: var(--quiet); }
+  .after-actions { display: flex; flex-wrap: wrap; gap: 10px 16px; margin-top: 16px; }
+
+  /* ---- the Chronicle ------------------------------------------------------------------------ */
+  .chron-grid { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 4fr); gap: 8px 56px; align-items: start; margin-top: 16px; }
+  .chron-col { min-width: 0; }
+  .chron-sec { margin-bottom: 34px; min-width: 0; }
+  .chron-sec > h2 { font: 600 var(--t-2)/1.3 var(--font-ui); color: var(--quiet); margin-bottom: 6px; }
+  .chron-sec p { max-width: var(--measure); }
+  .chron-big { font: 600 var(--t-5)/1.2 var(--font-display); font-variant-numeric: lining-nums tabular-nums; text-wrap: balance; }
+  .chron-lead { font: 400 var(--t-4)/1.35 var(--font-display); font-variant-numeric: lining-nums tabular-nums; }
+  .mark-line { margin: 16px 0 6px; }
+  .mark-num { font: 700 var(--t-7)/0.9 var(--font-display); font-variant-numeric: lining-nums; color: var(--plum); margin-left: 6px; }
+  .field-block { margin-top: 20px; }
+  .field-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 0 14px; margin-bottom: 6px; font-variant-numeric: tabular-nums; }
+  .field-head b { font: 600 var(--t-3)/1.3 var(--font-display); }
+  .field { display: flex; flex-wrap: wrap; row-gap: 4px; }
+  .field i { position: relative; width: 6px; height: 14px; flex: none; }
+  .field i:nth-child(5n) { margin-right: 6px; }
+  .field i::before { content: ''; position: absolute; background: var(--ink); }
+  .field.with i::before { background: var(--plum); }
+  .field i.held::before { left: 2px; top: 0; width: 2px; height: 14px; }
+  .field i.fell::before { left: 0; bottom: 0; width: 6px; height: 2px; opacity: 0.75; }
+  .field-notes { margin-top: 14px; }
+  .field-notes p { margin-top: 4px; }
+
+  .scale { position: relative; height: 104px; margin-top: 18px; }
+  .scale-rod { position: absolute; left: 0; right: 0; top: 42px; height: 12px; border: 1.5px solid var(--ink); background: var(--surface); }
+  .scale-span { position: absolute; top: 42px; height: 12px; background: var(--cut); border-inline: 2px solid var(--ink); }
+  .scale-mark { position: absolute; top: 0; width: 0; height: 104px; }
+  .scale-mark .pin { position: absolute; left: -1px; width: 2px; background: var(--ink); }
+  .scale-mark .lab { position: absolute; white-space: nowrap; font: 600 var(--t-2)/1.2 var(--font-ui); font-variant-numeric: tabular-nums; transform: translateX(-50%); }
+  .scale-mark.at-left .lab { transform: none; }
+  .scale-mark.at-right .lab { transform: translateX(-100%); }
+  .scale-mark.you .pin { top: 22px; height: 34px; background: var(--plum); width: 4px; left: -2px; }
+  .scale-mark.you .lab { top: 0; color: var(--plum); }
+  .scale-mark.old .pin { top: 40px; height: 28px; width: 0; left: -1px; background: none; border-left: 2px dashed var(--ink); }
+  .scale-mark.old .lab { top: 70px; }
+  .scale-mark.end .lab { top: 88px; font-weight: 400; font-size: var(--t-1); color: var(--quiet); }
+
+  .seal { display: flex; align-items: center; gap: 18px; padding: 16px 20px; border: 3px double var(--plum); max-width: 420px; }
+  .seal svg { width: 54px; height: 60px; flex: none; }
+  .seal .s-house { fill: var(--rye); }
+  .seal .s-valley { fill: var(--plum); }
+  .seal p { font: 700 var(--t-4)/1.2 var(--font-display); color: var(--plum); text-wrap: balance; }
+  .watched { font-size: var(--t-2); line-height: 1.45; font-variant-numeric: tabular-nums; }
+  .watched li { margin-top: 5px; }
+  .watched li.end { margin-top: 10px; font: 600 var(--t-3)/1.3 var(--font-display); font-variant-numeric: lining-nums tabular-nums; }
+  .chron-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; margin-top: 6px; }
+  .chron-past { margin-top: 34px; }
+
+  /* ---- narrow screens ----------------------------------------------------------------------- */
+  @media (max-width: 900px) {
+    .day-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "store" "main" "ways"; grid-template-rows: auto; }
+    .day-echo { display: block; }
+    .store-num b { font-size: var(--t-5); }
+    .rod { margin-top: 26px; }
+    .after-grid, .chron-grid, .opening { grid-template-columns: minmax(0, 1fr); }
+    .leaving-grid { grid-template-columns: minmax(0, 1fr); grid-template-areas: "store" "rows" "go"; grid-template-rows: auto; }
+    .after-grid { gap: 14px; }
+    .after-latest { display: block; }
+    .op-past { padding-top: 0; }
+  }
+  @media (max-width: 620px) {
+    .day-head { grid-template-columns: minmax(0, 1fr); row-gap: 8px; }
+    .stick { gap: 16px; padding: 0 12px; }
+    .know-now { display: block; }
+    .know summary { cursor: pointer; pointer-events: auto; min-height: 30px; }
+    .know summary::after { content: '+'; margin-left: auto; font: 600 var(--t-3)/1 var(--font-ui); color: var(--ink); }
+    .know[open] summary::after { content: '\2212'; }
+    .day-result { font-size: var(--t-3); }
+    .mark-num { font-size: var(--t-6); }
+    .statement { max-width: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .card-inner { transition: none; transform: none !important; }
+    .face { transition: none; backface-visibility: visible; -webkit-backface-visibility: visible; }
+    .face.back { transform: none; }
+  }
+</style>
+
+<svg class="glyphs" aria-hidden="true" focusable="false">
+  <symbol id="g-ford" viewBox="0 0 22 10"><path d="M1 6 Q3.5 1 6 6 T11 6 T16 6 T21 6"/></symbol>
+  <symbol id="g-ford-long" viewBox="0 0 44 12"><path d="M1 7 Q4.5 1 8 7 T15 7 T22 7 T29 7 T36 7 T43 7"/></symbol>
+</svg>
+
+<div class="ay" id="ay">
+  <div class="ay-page">
+
+    <section class="view opening" data-view="opening" aria-labelledby="opening-h">
+      <div class="op-main">
+        <h1 class="op-title focus-quiet" id="opening-h" tabindex="-1"></h1>
+        <div class="stick op-stick" id="op-stick" aria-hidden="true"></div>
+        <div class="op-premise" id="op-premise"></div>
+        <div class="stakes" aria-hidden="true">
+          <span class="stake"><i class="grain"></i><b id="stake-cost"></b></span>
+          <svg class="ford-wave" viewBox="0 0 44 12" focusable="false"><use href="#g-ford-long"></use></svg>
+          <span class="stake"><i class="grain"></i><i class="grain"></i><i class="grain"></i><b id="stake-worth"></b></span>
+        </div>
+        <button class="btn btn-primary" id="begin" type="button"></button>
+      </div>
+      <aside class="op-past" id="op-past" aria-labelledby="op-past-h" hidden>
+        <h2 class="label" id="op-past-h"></h2>
+        <ol class="past-list" id="op-past-list"></ol>
+      </aside>
+    </section>
+
+    <section class="view day" data-view="day" aria-labelledby="day-h" hidden>
+      <header class="day-head">
+        <h1 class="view-title" id="day-h" tabindex="-1"><span id="day-title"></span> <span class="last-note" id="day-last" hidden></span></h1>
+        <div class="stick" id="track" role="img"></div>
+        <p class="day-result" id="day-result" aria-live="polite"></p>
+      </header>
+      <div class="day-grid">
+        <div class="day-main">
+          <div class="season-end" id="season-end" hidden>
+            <h2 class="focus-quiet" id="season-h" tabindex="-1"></h2>
+            <p class="season-intro" id="season-intro"></p>
+            <ul class="season-kin" id="season-kin"></ul>
+            <ul class="season-others" id="season-others"></ul>
+          </div>
+          <div class="cards" id="cards"></div>
+          <div class="elsewhere" id="elsewhere" hidden></div>
+          <p class="small ford-note" id="ford-note"></p>
+          <div class="actions" id="day-actions">
+            <button class="btn btn-primary" id="close-day" type="button" disabled></button>
+            <button class="btn btn-primary" id="next-day" type="button" hidden></button>
+            <p class="day-echo" id="day-echo" aria-hidden="true"></p>
+          </div>
+        </div>
+        <section class="store" id="store" aria-labelledby="store-h">
+          <h2 id="store-h"></h2>
+          <p class="store-num" id="store-num"></p>
+          <div class="rod" id="store-rod" aria-hidden="true"></div>
+          <p class="small" id="store-old"></p>
+        </section>
+        <section class="ways" id="ways" aria-labelledby="ways-h">
+          <h2 id="ways-h"></h2>
+          <div id="ways-rows"></div>
+          <p class="small" id="ways-key"></p>
+        </section>
+      </div>
+    </section>
+
+    <section class="view leaving" data-view="leaving" aria-labelledby="leaving-h" hidden>
+      <h1 class="view-title" id="leaving-h" tabindex="-1"></h1>
+      <div class="leaving-grid">
+        <div class="leave-store">
+          <p class="statement" id="leaving-store"></p>
+          <div class="rod" id="leaving-rod" aria-hidden="true"></div>
+        </div>
+        <div class="leave-list">
+          <h2 class="label" id="leave-h"></h2>
+          <div class="leave-rows" id="leave-rows"></div>
+        </div>
+        <div class="leave-go">
+          <p class="leave-kin" id="leave-kin"></p>
+          <button class="btn btn-primary" id="leave" type="button"></button>
+        </div>
+      </div>
+    </section>
+
+    <section class="view afterwards" data-view="afterwards" aria-labelledby="after-h" hidden>
+      <h1 class="view-title" id="after-h" tabindex="-1"></h1>
+      <div class="after-grid">
+        <div class="after-ring">
+          <svg class="ring" id="ring" viewBox="0 0 440 580" role="img" focusable="false"></svg>
+          <p class="after-latest" id="after-latest" aria-hidden="true"></p>
+        </div>
+        <div class="after-rail">
+          <p class="chron-lead" id="after-one"></p>
+          <div class="after-end" id="after-end" aria-live="polite" hidden>
+            <p id="after-held"></p>
+            <p id="after-yours"></p>
+          </div>
+          <p class="counting" id="after-counting" aria-live="polite" hidden></p>
+          <div class="after-actions">
+            <button class="btn" id="skip" type="button"></button>
+            <button class="btn btn-primary" id="to-chronicle" type="button" hidden></button>
+          </div>
+          <ul class="legend" id="after-legend"></ul>
+          <div class="flow-wrap">
+            <div class="flow" id="flow" aria-hidden="true"></div>
+            <div class="flow-last" aria-hidden="true"></div>
+            <p class="small flow-last-label" id="flow-last"></p>
+            <p class="small" id="flow-caption"></p>
+          </div>
+          <h2 class="label ticker-head" id="ticker-h"></h2>
+          <ol class="ticker" id="ticker" role="log" aria-labelledby="ticker-h" tabindex="0"></ol>
+        </div>
+      </div>
+    </section>
+
+    <section class="view chronicle" data-view="chronicle" aria-labelledby="chron-h" hidden>
+      <h1 class="view-title" id="chron-h" tabindex="-1"></h1>
+      <div class="chron-grid">
+        <div class="chron-col" id="chron-main"></div>
+        <div class="chron-col" id="chron-side"></div>
+      </div>
+      <p class="small" id="chron-valley"></p>
+      <div class="chron-foot">
+        <button class="btn btn-primary" id="again" type="button"></button>
+        <button class="btn btn-quiet" id="again-same" type="button"></button>
+      </div>
+      <aside class="chron-past" id="chron-past" aria-labelledby="chron-past-h" hidden>
+        <h2 class="label" id="chron-past-h"></h2>
+        <ol class="past-list" id="chron-past-list"></ol>
+      </aside>
+    </section>
+
+  </div>
+</div>
+
+<script src="engine.js"></script><script src="words.js"></script><script src="app.js"></script>

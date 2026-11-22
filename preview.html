@@ -1,0 +1,856 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><style>:root{color-scheme:light;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>After You</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Old+Standard+TT:ital,wght@0,400;0,700;1,400&display=swap">
+<style>
+:root {
+  /* Layout: one surveyor's sheet of the valley. The map is the instrument (left on a laptop,
+     compact on top on a phone); the returns for each holding are filed beside it. */
+  --paper: #F2F5F7;         /* cool paper-white ground */
+  --paper-raised: #FBFCFD;  /* the sheet itself, and the four cards */
+  --paper-sunk: #E4EAEF;
+  --grid: #E0E7ED;          /* faint blue-grey grid */
+  --rule: #B4C1CE;
+  --ink: #1C2A3A;           /* blue-slate ink */
+  --ink-soft: #536579;
+  --field: #2F7A4B;         /* field green: a hand sent, a future held */
+  --field-wash: #D9EADD;
+  --river: #256D9F;         /* river blue: the river, the ford, focus */
+  --river-wash: #CFE3F0;
+  --madder: #A33D36;        /* madder: the holdings and their stores */
+  --yours: #8C5A00;         /* saffron, reserved for yours: your ways, learned from you */
+  --yours-fill: #DDA021;
+  --yours-wash: #F7E9C6;
+  --font-display: "Old Standard TT", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;   /* map lettering */
+  --font-text: "Barlow", "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;                 /* returns and cards */
+  --t-xs: 0.75rem;
+  --t-s: 0.8125rem;
+  --t-m: 0.9375rem;
+  --t-l: 1.125rem;
+  --t-xl: 1.5rem;
+  --t-xxl: 2.25rem;
+  --t-display: clamp(2.75rem, 8vw, 4.5rem);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #18222F; --paper-raised: #1F2B3B; --paper-sunk: #141C27; --grid: #1F2B3A; --rule: #3B4E64;
+    --ink: #E4EBF2; --ink-soft: #A3B4C6;
+    --field: #7CC492; --field-wash: #1F3D2D;
+    --river: #72B9E8; --river-wash: #1D3C54;
+    --madder: #E79080;
+    --yours: #F0C35B; --yours-fill: #F0C35B; --yours-wash: #453B1F;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #18222F; --paper-raised: #1F2B3B; --paper-sunk: #141C27; --grid: #1F2B3A; --rule: #3B4E64;
+  --ink: #E4EBF2; --ink-soft: #A3B4C6;
+  --field: #7CC492; --field-wash: #1F3D2D;
+  --river: #72B9E8; --river-wash: #1D3C54;
+  --madder: #E79080;
+  --yours: #F0C35B; --yours-fill: #F0C35B; --yours-wash: #453B1F;
+  color-scheme: dark;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px), linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 3rem 3rem;
+  color: var(--ink);
+  font-family: var(--font-text);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+.sheet {
+  max-width: 78rem;
+  margin-inline: auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 1.25rem 3rem;
+}
+.view { min-width: 0; }
+
+/* ---- type ---- */
+h1, h2, h3, h4, p, ol, ul, figure, fieldset, dl, dd { margin: 0; padding: 0; }
+ol, ul { list-style: none; }
+h1, h2, h3, h4 { text-wrap: balance; }
+h1 { font: 700 var(--t-display)/0.95 var(--font-display); letter-spacing: 0.005em; }
+h2 { font: 700 var(--t-xl)/1.15 var(--font-display); }
+h2:focus, h1:focus, h3:focus, h4:focus { outline: none; }
+h2:focus-visible, h1:focus-visible, h3:focus-visible, h4:focus-visible { outline: 2px solid var(--river); outline-offset: 4px; }
+.label {
+  font: 600 var(--t-xs)/1.3 var(--font-text);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.small { font-size: var(--t-s); line-height: 1.4; color: var(--ink-soft); max-width: 65ch; }
+.num { font-variant-numeric: tabular-nums; }
+/* A plus or minus before a number is set in the text face: the display face draws its minus
+   as long as a dash. app.js wraps the sign wherever a number stands in the display face. */
+.sign { font-family: var(--font-text); font-weight: 600; }
+.vh { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
+
+/* ---- buttons ---- */
+.btn {
+  appearance: none;
+  font: 600 var(--t-m)/1.2 var(--font-text);
+  color: var(--ink);
+  background: var(--paper-raised);
+  border: 1.5px solid var(--ink);
+  border-radius: 2px;
+  padding: 0.6rem 1.1rem;
+  min-height: 2.6rem;
+  cursor: pointer;
+}
+.btn:hover { background: var(--paper-sunk); }
+.btn-primary { background: var(--ink); color: var(--paper); }
+.btn-primary:hover { background: var(--ink-soft); }
+.btn-quiet { border-color: transparent; background: none; text-decoration: underline; text-underline-offset: 0.2em; padding-inline: 0.4rem; }
+.btn-quiet:hover { background: none; color: var(--river); }
+.btn:disabled { cursor: default; color: var(--ink-soft); background: none; border-style: dashed; border-color: var(--rule); }
+.btn:focus-visible, .why-btn:focus-visible, .why-back:focus-visible, .map-fold:focus-visible, .ticker:focus-visible, summary:focus-visible { outline: 2px solid var(--river); outline-offset: 2px; }
+/* lines that take focus from the page itself (the day's total, the end of the watched future) */
+.status:focus, .after-end:focus { outline: none; }
+.status:focus-visible, .after-end:focus-visible { outline: 2px solid var(--river); outline-offset: 4px; }
+.actions { display: flex; flex-wrap: wrap; gap: 0.5rem 0.75rem; align-items: center; }
+
+/* ---- the map (drawn by app.js as inline SVG; every colour comes from the tokens) ---- */
+.map-figure { min-width: 0; display: grid; gap: 0.5rem; }
+.map { min-width: 0; max-width: 38rem; }
+.map svg { display: block; width: 100%; height: auto; max-width: 100%; }
+.m-frame { fill: var(--paper-raised); stroke: var(--ink); stroke-width: 1.2; }
+.m-frame-outer { fill: none; stroke: var(--ink); stroke-width: 0.5; }
+.m-gridline { fill: none; stroke: var(--rule); stroke-width: 0.5; stroke-opacity: 0.4; }
+.m-river-bank { fill: none; stroke: var(--river); stroke-linecap: round; stroke-linejoin: round; }
+.m-river-water { fill: none; stroke: var(--river-wash); stroke-linecap: round; stroke-linejoin: round; }
+.m-ridge { fill: none; stroke: var(--ink-soft); stroke-width: 1.3; stroke-linejoin: round; }
+.m-hachure { fill: none; stroke: var(--ink-soft); stroke-width: 0.8; }
+.m-tie { fill: none; stroke: var(--ink-soft); stroke-width: 1; stroke-dasharray: 5 3.5; }
+.m-tie.is-mine { stroke: var(--ink); stroke-width: 1.25; }
+.m-tie.is-far { stroke-dasharray: 1.2 4; stroke-linecap: round; }
+.m-tie.is-hot { stroke-width: 2.2; }
+.m-ford { fill: var(--paper-raised); stroke: var(--river); stroke-width: 1.3; }
+.m-parcel { fill: var(--field-wash); stroke: var(--field); stroke-width: 1.2; }
+.m-parcel.is-plain { fill: var(--paper-raised); }
+.m-parcel.is-unseen { fill: none; stroke: var(--ink-soft); stroke-width: 1; stroke-dasharray: 3 3; }
+.m-furrow { fill: none; stroke: var(--field); stroke-width: 0.7; stroke-opacity: 0.6; }
+.m-fill { fill: var(--field); fill-opacity: 0.5; stroke: none; transform-box: fill-box; transform-origin: 50% 100%; transition: transform 0.45s ease; }
+.m-house { fill: var(--madder); stroke: var(--paper-raised); stroke-width: 1; }
+.m-diamond { fill: var(--yours-fill); stroke: var(--yours); stroke-width: 1.2; }
+.m-bound { fill: none; stroke: var(--yours); stroke-width: 2.4; }
+.m-bound-slot { fill: none; stroke: var(--rule); stroke-width: 1; stroke-dasharray: 1.5 3; }
+.m-tent { fill: var(--madder); stroke: var(--paper-raised); stroke-width: 1; stroke-linejoin: round; }
+.m-name, .m-sub, .m-num, .m-note { paint-order: stroke; stroke: var(--paper-raised); stroke-width: 3.5px; stroke-linejoin: round; text-anchor: middle; }
+.m-name { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.12em; fill: var(--ink); }
+.m-sub { font-family: var(--font-display); font-style: italic; fill: var(--ink-soft); }
+.m-note { font-family: var(--font-display); font-style: italic; fill: var(--ink-soft); }
+.m-note.is-water { fill: var(--river); }
+.m-num { font-family: var(--font-text); font-weight: 600; font-variant-numeric: tabular-nums; fill: var(--ink); }
+.m-hand { fill: none; stroke: var(--field); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.m-hand-head { fill: var(--field); stroke: var(--field); stroke-width: 1; stroke-linejoin: round; }
+.m-lost { fill: none; stroke: var(--field); stroke-width: 2.6; stroke-dasharray: 5 3.2; }
+.m-lost-x { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linecap: round; }
+.m-north { fill: none; stroke: var(--ink-soft); stroke-width: 1.2; }
+.m-north-head { fill: var(--ink-soft); stroke: none; }
+.m-note.is-north { font-style: normal; font-weight: 700; }
+.m-plan { fill: none; stroke: var(--ink); stroke-width: 1.6; stroke-linecap: round; }
+.m-plan-tip { fill: var(--paper-raised); stroke: var(--ink); stroke-width: 1.6; }
+.m-stay { fill: none; stroke: var(--ink); stroke-width: 2.8; stroke-linecap: round; }
+.m-hit { fill: var(--paper); fill-opacity: 0; stroke: none; }
+.m-hold.is-click { cursor: pointer; }
+.m-hold.is-hot .m-parcel { stroke-width: 2.4; }
+.m-hold .m-diamond, .m-hold .m-bound-full, .m-hold .m-tent { visibility: hidden; }
+.m-hold.is-yours .m-diamond, .m-hold.is-yours .m-bound-full { visibility: visible; }
+.m-hold.is-yours .m-house, .m-hold.is-new .m-house { visibility: hidden; }
+.m-hold.is-new:not(.is-yours) .m-tent { visibility: visible; }
+.m-name, .m-sub, .m-num, .m-note, .m-hand, .m-hand-head, .m-lost, .m-lost-x, .m-north, .m-north-head, .m-plan, .m-plan-tip, .m-stay, .m-ford { pointer-events: none; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; font-size: var(--t-xs); line-height: 1.35; color: var(--ink-soft); }
+.legend-item { display: inline-flex; align-items: center; gap: 0.4rem; min-width: 0; }
+.legend-item svg { flex: none; display: block; }
+.legend-head { font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase; }
+/* the day map's key folds: open where there is width for it, behind its heading on a phone */
+.key { min-width: 0; }
+.key .legend { margin-top: 0.3rem; }
+.know summary, .key summary, .past summary { position: relative; cursor: pointer; font: 600 var(--t-xs)/1.3 var(--font-text); letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink-soft); padding-block: 0.15rem; }
+.key-line { fill: none; stroke: var(--field); stroke-width: 2.4; stroke-linecap: round; }
+.key-head { fill: var(--field); stroke: none; }
+.key-lost { fill: none; stroke: var(--field); stroke-width: 2.4; stroke-dasharray: 3.5 2.6; }
+.key-ink { fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-linecap: round; }
+.key-tie { fill: none; stroke: var(--ink-soft); stroke-width: 1; stroke-dasharray: 3.5 2.5; }
+.key-open { fill: var(--paper-raised); stroke: var(--ink); stroke-width: 1.5; }
+.key-river { fill: none; stroke: var(--river); stroke-width: 1.4; }
+.key-yours { fill: none; stroke: var(--yours); stroke-width: 2.2; }
+.key-diamond { fill: var(--yours-fill); stroke: var(--yours); stroke-width: 1.1; }
+.key-parcel { fill: var(--paper-raised); stroke: var(--field); stroke-width: 1.1; }
+.key-fill { fill: var(--field); fill-opacity: 0.5; stroke: none; }
+.key-square { fill: var(--madder); stroke: none; }
+.key-text { font-family: var(--font-text); font-weight: 600; fill: var(--ink); }
+.key-held { fill: var(--field); stroke: var(--field); stroke-width: 1; }
+.key-fell { fill: none; stroke: var(--ink-soft); stroke-width: 1; }
+.key-sent { fill: var(--yours); stroke: var(--yours); stroke-width: 1.4; }
+.key-stayed { fill: none; stroke: var(--yours); stroke-width: 1.4; }
+.key-ghost { fill: none; stroke: var(--ink-soft); stroke-width: 1.4; stroke-dasharray: 2 1.7; }
+
+/* ---- opening ---- */
+.opening { display: grid; gap: 1.5rem 3rem; align-items: center; }
+.opening-text { min-width: 0; display: grid; gap: 1rem; justify-items: start; }
+.premise { font: italic 400 var(--t-xl)/1.3 var(--font-display); max-width: 30rem; text-wrap: balance; }
+.stakes { display: grid; gap: 0.6rem; max-width: 34rem; }
+.stakes li { padding-left: 1.1rem; position: relative; }
+.stakes li::before { content: ""; position: absolute; left: 0; top: 0.72em; width: 0.5rem; border-top: 1.5px solid var(--ink-soft); }
+.sheet-no { font: 400 var(--t-s)/1.3 var(--font-text); letter-spacing: 0.06em; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+@media (min-width: 60rem) {
+  .opening { grid-template-columns: minmax(0, 28rem) minmax(0, 1fr); padding-block: 1rem; align-items: start; }
+}
+/* In one column the list of earlier lives goes below the map, so that the map stays on the
+   first screen: the text's own lines become rows of the sheet and the list takes the last one. */
+@media (max-width: 59.99rem) {
+  .opening { gap: 1rem; justify-items: start; }
+  .opening-text { display: contents; }
+  .opening > *, .opening-text > * { min-width: 0; }
+  .opening > .map-figure { order: 1; justify-self: stretch; }
+  .opening .past { order: 2; }
+}
+
+.past { display: grid; gap: 0.35rem; margin-top: 0.5rem; }
+.past ol { display: grid; gap: 0.15rem; font-size: var(--t-s); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+/* the Opening lists the latest few lives; the older ones wait behind their count, so that the
+   list cannot push the Opening past the foot of a laptop's window */
+.past details { min-width: 0; }
+.past details ol { margin-top: 0.2rem; }
+
+/* ---- the day: header ---- */
+.daybar { display: grid; gap: 0.9rem 2.5rem; align-items: end; padding-bottom: 0.9rem; margin-bottom: 1rem; border-bottom: 1.5px solid var(--ink); }
+.daybar > div { min-width: 0; }
+.day-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.9rem; }
+.day-title .note { font: italic 400 var(--t-l)/1.2 var(--font-display); color: var(--madder); }
+.track { display: flex; gap: 0.6rem; margin-top: 0.5rem; max-width: 26rem; }
+.track-season { flex: 1 1 0; display: flex; min-width: 0; border: 1.5px solid var(--ink); }
+.track-day { flex: 1 1 0; height: 0.8rem; border-left: 1px solid var(--ink); position: relative; }
+.track-day:first-child { border-left: 0; }
+.track-day.is-spent { background: var(--ink); border-left-color: var(--paper); }
+.track-day.is-today { background: var(--paper-raised); }
+.track-day.is-today::before { content: ""; position: absolute; inset: 2px; background: repeating-linear-gradient(135deg, var(--ink) 0 1.5px, transparent 1.5px 4px); }
+.track-day.is-today::after { content: ""; position: absolute; left: 50%; top: -0.55rem; margin-left: -0.3rem; border: 0.3rem solid transparent; border-top-color: var(--ink); border-bottom-width: 0; }
+.store-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.75rem; }
+.store-text { font: 700 var(--t-xl)/1.1 var(--font-display); font-variant-numeric: tabular-nums; }
+.meter { position: relative; margin: 0.45rem 0 0.4rem; height: 1.5rem; max-width: 34rem; }
+.meter-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 0.8rem; border: 1.5px solid var(--ink); background: var(--paper-raised); }
+.meter-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--madder); }
+.meter-ten { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px solid var(--paper-raised); }
+.meter-ten.is-beyond { border-left-color: var(--rule); }
+.meter-need { position: absolute; bottom: 0; height: 1.5rem; width: 0; border-left: 2px solid var(--ink); }
+.meter-need span { position: absolute; top: -0.15rem; right: 0.3rem; white-space: nowrap; font: 600 var(--t-xs)/1 var(--font-text); letter-spacing: 0.05em; color: var(--ink); font-variant-numeric: tabular-nums; }
+.meter-need.is-met::after { content: ""; position: absolute; left: -2px; top: 0; border: 0.3rem solid transparent; border-left-color: var(--ink); border-right-width: 0; }
+@media (min-width: 48rem) {
+  .daybar { grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); }
+}
+@media (max-width: 39.99rem) {
+  .sheet { padding-block: 0.75rem 3rem; }
+  .daybar { gap: 0.6rem; padding-bottom: 0.6rem; margin-bottom: 0.75rem; }
+}
+
+/* ---- the day: map, cards, ways ---- */
+.day-grid { display: flex; flex-direction: column; gap: 1rem; }
+.day-left, .day-right { display: contents; }
+.day-grid > *, .day-left > *, .day-right > * { min-width: 0; }
+#day-map-figure { order: 1; }
+.map-bar { order: 1; margin-top: -0.5rem; position: relative; }
+.map-bar.is-folded { margin-top: 0; }
+.status { order: 2; }
+.cards { order: 3; }
+.season-end { order: 3; }
+.elsewhere { order: 4; }
+.day-actions { order: 5; }
+.ways { order: 6; }
+.ford-note { order: 7; }
+.status { font: 400 var(--t-l)/1.3 var(--font-display); font-variant-numeric: tabular-nums; min-height: 1.5rem; scroll-margin-top: 0.75rem; }
+.status.is-total { font-weight: 700; }
+.day-actions .btn { width: 100%; }
+@media (min-width: 62rem) {
+  .day-grid { display: grid; grid-template-columns: minmax(0, 0.84fr) minmax(0, 1.16fr); gap: 1rem 1.75rem; align-items: start; }
+  .day-left { display: grid; gap: 0.9rem; align-content: start; }
+  .map-bar { margin-top: 0; }
+  .status-day { display: none; }
+  .day-right { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 1rem; align-items: center; }
+  .status { grid-area: 1 / 1 / 2 / 2; }
+  .day-actions { grid-area: 1 / 2 / 2 / 3; }
+  .day-actions .btn { width: auto; min-width: 13rem; }
+  .cards { grid-area: 2 / 1 / 3 / 3; margin-top: 0.75rem; }
+  .season-end { grid-area: 3 / 1 / 4 / 3; margin-top: 0.75rem; }
+  .elsewhere { grid-area: 4 / 1 / 5 / 3; margin-top: 0.9rem; }
+  .ford-note { grid-area: 5 / 1 / 6 / 3; margin-top: 0.75rem; }
+  /* the day fits a laptop's window: the sheet's foot must not add a scrollbar to it */
+  .view[data-view="day"] { margin-bottom: -2rem; }
+}
+/* A laptop of ordinary height shows the day at once: track, store, map, the four cards and your
+   ways. For that the map keeps to 24rem, its key goes below your ways, and each card shows the
+   one row of "What you know of them" that bears on today (app.js opens the rest where the
+   window is at least 66rem tall, the same line as here). */
+@media (min-width: 62rem) and (max-height: 65.99rem) {
+  .day-left .map { max-width: 24rem; }
+  .map-bar { order: 7; }
+}
+/* A phone: the map is cropped at the ridge by app.js so that the first card is on the first
+   screen, and it can be folded away (the fold is remembered for the Life). The hint that a
+   holding takes a tap stands outside the folded key. */
+.map-fold { display: none; }
+.map-hint { display: none; margin-top: 0.15rem; font-size: var(--t-xs); line-height: 1.35; }
+@media (max-width: 39.99rem) {
+  .map-fold {
+    display: block; position: absolute; top: 0; right: 0;
+    appearance: none; background: none; border: 0; margin: 0; padding: 0.15rem 0; cursor: pointer;
+    font: 600 var(--t-xs)/1.3 var(--font-text); letter-spacing: 0.09em; text-transform: uppercase; color: var(--ink);
+    text-decoration: underline; text-underline-offset: 0.2em;
+  }
+  .map-bar .key summary { max-width: 55%; }
+  .map-hint { display: block; }
+  .legend-item.is-hint { display: none; }
+}
+
+.cards { display: grid; gap: 0.75rem; grid-template-columns: minmax(0, 1fr); }
+/* Two by two, the cards lie as the holdings do on the map (north-west and north-east above,
+   west and east below), and app.js puts them in that order in the page, so that reading and
+   the Tab key go the way the eye does. Down a phone the order stays the engine's. */
+@media (min-width: 40rem) {
+  .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .card[data-bearing="nw"] { grid-area: 1 / 1; }
+  .card[data-bearing="ne"] { grid-area: 1 / 2; }
+  .card[data-bearing="w"] { grid-area: 2 / 1; }
+  .card[data-bearing="e"] { grid-area: 2 / 2; }
+  /* every card keeps room for the second line that the sister's card carries (one line of the
+     title, one of the line beneath), so that the choices of two cards side by side stand level */
+  .card-names { min-height: calc(var(--t-l) * 1.2 + var(--t-s) * 1.25); }
+}
+
+/* The four neighbours are the only cards on the page: separate objects the reader acts on. */
+.card { min-width: 0; display: grid; perspective: 1400px; }
+.card-inner { position: relative; display: grid; min-width: 0; transform-style: preserve-3d; transition: transform 0.5s cubic-bezier(0.3, 0.1, 0.2, 1); }
+.card-face {
+  grid-area: 1 / 1;
+  min-width: 0;
+  display: flex; flex-direction: column; gap: 0.4rem;
+  background: var(--paper-raised);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 0.65rem 0.8rem 0.6rem;
+  -webkit-backface-visibility: hidden; backface-visibility: hidden;
+  transition: visibility 0s linear 0.25s;
+}
+.card-front { transform: rotateY(0deg); }
+/* Unturned, the back lies over the front and takes the front's size: a reason longer than the
+   front must not make the card taller, and leave a blank band on its face, before anyone has
+   asked for it. Turned over, the back stands in the cell with the front, and the card is as
+   tall as the reason needs (app.js then keeps the whole card in the window). */
+.card-back { position: absolute; inset: 0; overflow: hidden; transform: rotateY(180deg); visibility: hidden; border-color: var(--ink); gap: 0.3rem; }
+.card.is-flipped .card-inner { transform: rotateY(180deg); }
+.card.is-flipped .card-front { visibility: hidden; }
+.card.is-flipped .card-back { position: static; overflow: visible; visibility: visible; }
+/* the face coming into view shows at once (it can take focus); the one leaving hides at the half turn */
+.card:not(.is-flipped) .card-front, .card.is-flipped .card-back { transition-delay: 0s; }
+.card.is-hot .card-face { border-color: var(--ink); }
+.card-head { display: flex; align-items: flex-start; gap: 0.6rem; }
+.card-names { min-width: 0; flex: 1 1 auto; }
+.card-title { font: 700 var(--t-l)/1.2 var(--font-display); }
+.card-sub { font: italic 400 var(--t-s)/1.25 var(--font-display); color: var(--ink-soft); }
+.bearing { flex: none; font: 600 var(--t-xs)/1 var(--font-text); letter-spacing: 0.06em; color: var(--ink-soft); border: 1px solid var(--rule); border-radius: 50%; width: 1.75rem; height: 1.75rem; display: grid; place-items: center; }
+.card-yesterday { font-size: var(--t-s); line-height: 1.4; }
+.card-way { font-size: var(--t-xs); line-height: 1.35; color: var(--yours); }
+
+.choice { border: 0; min-width: 0; margin-top: 0.1rem; }
+.choice-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.4rem; min-width: 0; }
+.opt { position: relative; display: block; min-width: 0; cursor: pointer; }
+.opt input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.opt-face {
+  display: flex; align-items: center; justify-content: center; gap: 0.45rem;
+  min-height: 2.5rem; padding: 0.3rem 0.4rem;
+  border: 1.5px solid var(--ink-soft); border-radius: 2px;   /* an empty option still reads as a button */
+  font: 600 var(--t-s)/1.15 var(--font-text); text-align: center;
+  background: var(--paper-raised); color: var(--ink);
+}
+.opt:hover .opt-face { border-color: var(--ink); }
+/* Both options stand empty until one is picked: no mark that could pass for a radio's dot.
+   The chosen one is shown by the whole option, a solid ground with a check. */
+.opt-check { flex: none; display: none; }
+.opt-check svg { display: block; }
+.opt-check path { fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.opt input:checked + .opt-face .opt-check { display: block; }
+.opt.is-send input:checked + .opt-face { background: var(--field); border-color: var(--field); color: var(--paper); }
+.opt.is-stay input:checked + .opt-face { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.opt input:focus-visible + .opt-face { outline: 2px solid var(--river); outline-offset: 2px; }
+.opt input:disabled { cursor: default; }
+.opt input:disabled + .opt-face { cursor: default; }
+.opt input:disabled:not(:checked) + .opt-face { color: var(--ink-soft); border-style: dashed; border-color: var(--rule); background: none; }
+.opt.is-disabled:hover .opt-face { border-color: var(--rule); }
+.opt.is-send.is-disabled:hover input:checked + .opt-face { border-color: var(--field); }
+.opt.is-stay.is-disabled:hover input:checked + .opt-face { border-color: var(--ink); }
+
+.card-result { display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto; align-items: center; gap: 0.15rem 0.6rem; }
+.result-glyph svg { display: block; }
+.result-num { font: 700 var(--t-xl)/1 var(--font-display); font-variant-numeric: tabular-nums; }
+.result-text { grid-column: 1 / -1; font-size: var(--t-s); line-height: 1.4; }
+.why-btn {
+  appearance: none; grid-column: 4; justify-self: end;
+  font: 600 var(--t-s)/1 var(--font-text); color: var(--ink);
+  background: none; border: 1.5px solid var(--ink); border-radius: 999px;
+  padding: 0.35rem 0.75rem; min-height: 1.9rem; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 0.4rem;
+}
+.why-btn:hover { background: var(--paper-sunk); }
+.why-btn.is-marked { border-color: var(--yours); box-shadow: 0 0 0 3px var(--yours-wash); }
+.why-mark { flex: none; width: 0.5rem; height: 0.5rem; background: var(--yours-fill); border: 1px solid var(--yours); transform: rotate(45deg); }
+
+.know { margin-top: auto; padding-top: 0.2rem; }
+.know-changed { font-size: var(--t-xs); line-height: 1.35; margin-top: 0.2rem; }
+.know-rows { display: grid; margin-top: 0.15rem; }
+.know-row {
+  display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 0.75rem;
+  font-size: var(--t-xs); line-height: 1.5; font-variant-numeric: tabular-nums;
+  padding-bottom: 2px;
+  background: linear-gradient(to right, var(--field) calc(var(--share, 0) * 1%), var(--rule) 0) bottom left / 100% 2px no-repeat;
+}
+.know-row.is-unseen { color: var(--ink-soft); background: repeating-linear-gradient(to right, var(--rule) 0 2px, transparent 2px 5px) bottom left / 100% 1px no-repeat; }
+.know-row span { min-width: 0; }
+.know-row span:last-child { margin-left: auto; }
+.know-row.is-today { font-weight: 600; }
+.know-rows .know-row.is-today .know-label::before { content: ""; display: inline-block; margin-right: 0.3rem; border: 0.28rem solid transparent; border-left-color: currentColor; border-right-width: 0; }
+.know-foot { font-size: var(--t-xs); line-height: 1.35; color: var(--ink-soft); margin-top: 0.3rem; }
+/* While the section is closed, a card that sits beside another still shows the one row that
+   bears on today: how they have acted in the situation they are in now. A phone keeps it folded. */
+.know-now { display: none; margin-top: -0.2rem; }
+.know-now .know-changed { margin-top: 0; }
+@media (min-width: 40rem) { .know:not([open]) + .know-now { display: block; } }
+
+.back-title { font: 700 var(--t-l)/1.2 var(--font-display); }
+.back-where { font: italic 400 var(--t-m)/1.35 var(--font-display); }
+.back-lines { display: grid; gap: 0.25rem; font-size: var(--t-s); line-height: 1.4; }
+.back-lines .is-deed { padding-left: 0.9rem; position: relative; color: var(--yours); }
+.back-lines .is-deed::before { content: ""; position: absolute; left: 0; top: 0.42em; width: 0.45rem; height: 0.45rem; border-radius: 50%; border: 1.5px solid var(--yours); }
+.back-lines .is-deed.is-sent::before { background: var(--yours); }
+.back-lines .is-more { padding-left: 0.9rem; color: var(--ink-soft); }
+.back-lines .is-from-you { font-weight: 600; color: var(--yours); }
+.why-back {
+  appearance: none; align-self: flex-start; margin-top: auto;
+  font: 600 var(--t-s)/1 var(--font-text); color: var(--ink);
+  background: none; border: 1.5px solid var(--ink); border-radius: 999px;
+  padding: 0.35rem 0.75rem; min-height: 1.9rem; cursor: pointer;
+}
+.why-back:hover { background: var(--paper-sunk); }
+.back-gap { flex: 1 1 0.4rem; min-height: 0.4rem; }
+
+.season-end { display: grid; gap: 0.6rem; padding: 0.25rem 0 0.5rem; max-width: 40rem; }
+.season-end h3 { font: 700 var(--t-xl)/1.15 var(--font-display); }
+.season-body { display: grid; gap: 0.5rem; }
+.season-kin { font-weight: 600; }
+.season-list { display: grid; gap: 0.3rem; }
+.season-list li { padding-left: 1rem; position: relative; }
+.season-list li::before { content: ""; position: absolute; left: 0; top: 0.72em; width: 0.5rem; border-top: 1.5px solid var(--ink-soft); }
+.season-list.is-yours li { color: var(--yours); }
+.season-list.is-yours li::before { border-top-color: var(--yours); }
+
+.elsewhere { display: grid; gap: 0.35rem; }
+.elsewhere-body { display: grid; gap: 0.35rem; font-size: var(--t-s); }
+.else-line { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.75rem; }
+.else-line p { min-width: 0; }
+.else-why { display: grid; gap: 0.25rem; padding: 0.2rem 0 0.5rem 1.1rem; max-width: 36rem; }
+.else-why .back-where { font-size: var(--t-m); }
+
+.ways { display: grid; gap: 0.4rem; }
+.ways-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.2rem 1rem; }
+.ways-rows { display: grid; gap: 0.1rem; }
+.way-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "title count" "marks marks"; gap: 0.1rem 0.75rem; align-items: center; padding: 0.2rem 0; border-top: 1px solid var(--rule); font-size: var(--t-s); }
+.way-row:first-child { border-top: 0; }
+.way-title { grid-area: title; min-width: 0; }
+.way-count { grid-area: count; font-variant-numeric: tabular-nums; color: var(--ink-soft); white-space: nowrap; }
+.way-marks { grid-area: marks; display: flex; flex-wrap: wrap; gap: 5px 3px; min-height: 0.9rem; align-items: center; min-width: 0; padding-bottom: 4px; }
+.way-row.is-empty .way-title, .way-row.is-empty .way-count { color: var(--ink-soft); }
+.way-row.is-empty .way-marks { background: repeating-linear-gradient(to right, var(--rule) 0 2px, transparent 2px 6px) left center / 100% 1px no-repeat; }
+.way-row.is-hot .way-title { font-weight: 600; color: var(--yours); }
+.way-row.is-hollow { grid-template-columns: minmax(0, 1fr); grid-template-areas: "title" "count"; }
+.way-row.is-hollow .way-marks { display: none; }
+.way-row.is-hollow .way-count { white-space: normal; }
+.m { position: relative; display: inline-block; flex: none; width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid var(--yours); }
+.m.is-sent { background: var(--yours); }
+.m.is-new::after { content: ""; position: absolute; left: -1.5px; right: -1.5px; bottom: -5px; height: 2px; background: var(--ink); }
+.m.is-ghost { border-style: dashed; border-color: var(--ink-soft); background: none; }
+.m.is-ghost.is-sent::before { content: ""; position: absolute; inset: 1.5px; border-radius: 50%; background: var(--ink-soft); }
+.m.is-daygap { margin-left: 3px; }
+@media (min-width: 40rem) {
+  .way-row { grid-template-columns: minmax(0, 11rem) minmax(0, 1fr) auto; grid-template-areas: "title marks count"; }
+  .way-row.is-hollow { grid-template-columns: minmax(0, 11rem) minmax(0, 1fr); grid-template-areas: "title count"; }
+}
+/* on a touch screen the small controls take a finger without growing on the sheet */
+@media (pointer: coarse), (max-width: 39.99rem) {
+  .why-btn, .why-back { position: relative; }
+  .why-btn::after, .why-back::after { content: ""; position: absolute; inset: -0.45rem -0.25rem; }   /* 1.9rem + 0.9rem */
+  .know summary::after { content: ""; position: absolute; inset: -0.6rem 0 -0.9rem; }               /* up to the choices, down to the card's edge */
+  .key summary::after { content: ""; position: absolute; inset: -0.5rem 0 -1rem; }
+  .map-fold::after { content: ""; position: absolute; inset: -0.5rem 0 -1rem; }
+  .past summary::after { content: ""; position: absolute; inset: -0.5rem 0; }
+}
+/* On a laptop of ordinary height (the same line as above) the day's sheet closes up a little,
+   in its spacing only: a closed day whose cards carry the note that a house changed a way,
+   with "Elsewhere today" beneath them, then still ends above the foot of the window. These
+   rules stand after the ones they tighten. */
+@media (min-width: 62rem) and (max-height: 65.99rem) {
+  .view[data-view="day"] { margin-top: -0.5rem; margin-bottom: -2.5rem; }   /* the head and foot of the sheet, as on a phone */
+  .daybar { padding-bottom: 0.6rem; margin-bottom: 0.75rem; }
+  .cards { gap: 0.5rem 0.75rem; margin-top: 0.5rem; }
+  .card-face { padding-block: 0.5rem 0.45rem; }
+  .elsewhere { margin-top: 0.6rem; }
+  .ford-note { margin-top: 0.5rem; }
+}
+
+/* ---- leaving ---- */
+.leaving { display: grid; gap: 1.5rem 3rem; align-items: start; }
+.leaving-text { min-width: 0; display: grid; gap: 0.9rem; justify-items: stretch; }
+.lead { font: 400 var(--t-xl)/1.3 var(--font-display); font-variant-numeric: tabular-nums; text-wrap: balance; }
+.leave-rows { display: grid; }
+.leave-kin { font-weight: 600; max-width: 65ch; }
+@media (min-width: 60rem) {
+  .leaving { grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr); }
+}
+
+/* ---- the Afterwards ---- */
+.afterbar { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 0.6rem 2rem; padding-bottom: 0.9rem; margin-bottom: 1rem; border-bottom: 1.5px solid var(--ink); }
+.afterbar > div { min-width: 0; }
+.afterbar h2 { margin-bottom: 0.4rem; }   /* room for the heading's focus ring above the line beneath it */
+.afterbar-right { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; }
+.counter { font: 700 var(--t-xl)/1.1 var(--font-display); font-variant-numeric: tabular-nums; }
+/* In one column the list of events lies below the map and the strip: while the future plays,
+   the latest two stand here, newest first, in a box of fixed height so that nothing below moves. */
+.now { display: grid; gap: 0.25rem; margin-bottom: 0.9rem; }
+.now-lines { display: grid; gap: 0.15rem; align-content: start; height: 4.75rem; overflow: hidden; font-size: var(--t-s); line-height: 1.4; }
+.now-lines li { padding-left: 1rem; position: relative; }
+.now-lines li::before { content: ""; position: absolute; left: 0; top: 0.68em; width: 0.5rem; border-top: 1.5px solid var(--ink-soft); }
+.now-lines li.is-yours { color: var(--yours); }
+@media (min-width: 62rem) { .now { display: none; } }
+.after-grid { display: grid; gap: 1.25rem 2rem; align-items: start; }
+.after-left, .after-right { min-width: 0; display: grid; gap: 0.9rem; align-content: start; }
+/* The strip heads the second column: in two columns it stands beside the map, above the list
+   of events, where a short window cannot cut it off; in one column it follows the map as before. */
+.flow { display: grid; gap: 0.3rem; min-width: 0; }
+.flow-strip, .flow-axis { margin-left: 2.25rem; }   /* a gutter for the "half" label, clear of the bars */
+.flow-strip { position: relative; height: 4.5rem; border-bottom: 1.5px solid var(--ink); display: grid; grid-template-columns: repeat(30, minmax(0, 1fr)); align-items: end; }
+.flow-col { position: relative; height: 100%; min-width: 0; }
+.flow-col.is-late { background: var(--paper-sunk); }
+.flow-col i { position: absolute; left: 19%; right: 19%; bottom: 0; height: 0; border: 1px solid var(--field); border-bottom: 0; background: var(--field); transition: height 0.35s ease; }
+.flow-col.is-under i { background: none; }
+.flow-col.is-waiting i { border-color: transparent; }
+.flow-half { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed var(--ink); pointer-events: none; }
+.flow-half span { position: absolute; right: 100%; top: 0; margin-right: 0.35rem; transform: translateY(-50%); white-space: nowrap; font: 600 var(--t-xs)/1 var(--font-text); color: var(--ink); }
+.flow-axis { display: grid; grid-template-columns: repeat(30, minmax(0, 1fr)); font: 400 var(--t-xs)/1.3 var(--font-text); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.flow-axis span { text-align: center; white-space: nowrap; }
+.flow-axis .flow-late { text-align: center; white-space: normal; line-height: 1.15; border-top: 1.5px solid var(--ink-soft); margin: 0.15rem 0 0 4px; padding-top: 0.1rem; }
+.flow-rule { margin-left: 2.25rem; }
+.ticker { display: grid; gap: 0.35rem; align-content: start; font-size: var(--t-m); max-height: 21rem; overflow-y: auto; padding-right: 0.25rem; min-height: 3rem; }
+.ticker.is-done { max-height: none; overflow-y: visible; }   /* at rest the whole list shows */
+.ticker li { padding-left: 1rem; position: relative; }
+.ticker li::before { content: ""; position: absolute; left: 0; top: 0.72em; width: 0.5rem; border-top: 1.5px solid var(--ink-soft); }
+.ticker li.is-yours { color: var(--yours); }
+.ticker li.is-yours::before { top: 0.5em; width: 0.42rem; height: 0.42rem; background: var(--yours-fill); border: 1px solid var(--yours); transform: rotate(45deg); }
+.after-close { display: grid; gap: 0.9rem; scroll-margin-block: 1rem; }
+#to-chronicle { scroll-margin-block: 1.25rem; }
+.after-end { display: grid; gap: 0.2rem; padding-top: 0.6rem; border-top: 1.5px solid var(--ink); }
+.after-end p:first-child { font: 700 var(--t-xl)/1.2 var(--font-display); text-wrap: balance; }
+@media (min-width: 62rem) {
+  .after-grid { grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr); }
+}
+/* a short window: the list of events scrolls in a lower box while the future plays, so that
+   it ends above the foot of the window with the strip over it */
+@media (min-width: 62rem) and (max-height: 47.99rem) {
+  .ticker { max-height: 16rem; }
+}
+
+/* ---- the Chronicle ---- */
+.chron-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0.3rem 2rem; padding-bottom: 0.9rem; margin-bottom: 1.25rem; border-bottom: 1.5px solid var(--ink); }
+.chron-grid { display: grid; gap: 1.75rem 3rem; align-items: start; }
+.chron-main, .chron-side { min-width: 0; display: grid; gap: 1.75rem; align-content: start; }
+.chron-block { display: grid; gap: 0.5rem; min-width: 0; }
+.chron-block p { max-width: 65ch; }
+.chron-figure { font: 700 var(--t-xl)/1.25 var(--font-display); font-variant-numeric: tabular-nums; }
+.mark-line { font: 700 var(--t-xxl)/1.1 var(--font-display); font-variant-numeric: tabular-nums; }
+.rows { display: grid; gap: 0.6rem; margin-top: 0.4rem; }
+.row { display: grid; gap: 0.2rem 1rem; align-items: start; }
+.row-label { font: 600 var(--t-s)/1.3 var(--font-text); }
+.row-marks { display: grid; grid-template-columns: repeat(40, minmax(0, 1fr)); gap: 2px; max-width: 30rem; }
+.k { display: block; aspect-ratio: 1; border: 1px solid var(--ink-soft); min-width: 0; }
+.k.is-held { background: var(--field); border-color: var(--field); }
+@media (min-width: 40rem) { .row { grid-template-columns: 6.5rem minmax(0, 1fr); } }
+
+.scale { position: relative; margin: 0.4rem 7px 0; padding-top: 3.3rem; padding-bottom: 2.3rem; max-width: 38rem; }
+.scale.has-low { padding-bottom: 3.4rem; }
+.scale-bar { position: relative; height: 12px; border: 1.5px solid var(--ink); background: var(--paper-raised); }
+.scale-block { position: absolute; top: 0; bottom: 0; background: var(--ink); }
+.scale-flag { position: absolute; white-space: nowrap; font: 600 var(--t-s)/1.2 var(--font-text); font-variant-numeric: tabular-nums; padding: 0 0.4rem; }
+.scale-flag.is-you { color: var(--yours); }
+.scale-flag.is-upper { top: 0; }
+.scale-flag.is-lower { top: 1.55rem; }
+.scale-flag.at-end { transform: translateX(-100%); }
+.scale-lead { position: absolute; width: 0; height: 0; border-left: 1.5px solid var(--ink); }
+.scale-lead.is-you { border-left-color: var(--yours); }
+.scale-lead.is-upper { top: 0.1rem; height: 3.2rem; }
+.scale-lead.is-lower { top: 1.65rem; height: 1.65rem; }
+.scale-pin { position: absolute; top: 50%; width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px; }
+.scale-pin.is-you { background: var(--yours-fill); border: 1.5px solid var(--yours); transform: rotate(45deg); }
+.scale-pin.is-old { background: var(--paper-raised); border: 2px solid var(--ink); border-radius: 50%; }
+/* where the two pins fall on the same place, the old way's ring is drawn wide enough to show round yours */
+.scale-pin.is-old.is-under { width: 21px; height: 21px; margin: -10.5px 0 0 -10.5px; }
+.scale-range { position: absolute; top: calc(3.3rem + 12px + 5px); height: 7px; border: 1.5px solid var(--ink-soft); border-top: 0; }
+.scale-end { position: absolute; top: calc(3.3rem + 12px + 15px); white-space: nowrap; font: 400 var(--t-xs)/1.3 var(--font-text); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.scale-end.at-end { transform: translateX(-100%); }
+.scale-end.is-low { top: calc(3.3rem + 12px + 15px + 1.1rem); }
+
+.seal { display: flex; align-items: center; gap: 1rem; }
+.seal svg { flex: none; display: block; }
+.seal p { font: 700 var(--t-xl)/1.2 var(--font-display); text-wrap: balance; }
+.seal-ring { fill: none; stroke: var(--madder); stroke-width: 2; }
+.seal-ring-thin { fill: none; stroke: var(--madder); stroke-width: 0.8; }
+.seal-tick { fill: none; stroke: var(--madder); stroke-width: 1; }
+.seal-parcel { fill: var(--field-wash); stroke: var(--field); stroke-width: 1.3; }
+.seal-house { fill: var(--madder); stroke: none; }
+.seal-check { fill: none; stroke: var(--field); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+
+.became { display: grid; gap: 0.35rem; }
+.became li { padding-left: 1rem; position: relative; }
+.became li::before { content: ""; position: absolute; left: 0; top: 0.72em; width: 0.5rem; border-top: 1.5px solid var(--ink-soft); }
+.became li.is-close { font-weight: 600; padding-left: 0; margin-top: 0.2rem; }
+.became li.is-close::before { content: none; }
+@media (min-width: 62rem) {
+  .chron-grid { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card-inner, .card-face, .m-fill, .flow-col i { transition: none; }
+}
+/* Filled against open carries meaning on these marks, and forced colours would level them:
+   they keep the page's tokens, which already follow the light or dark scheme in force. */
+@media (forced-colors: active) {
+  .opt-face, .m, .k, .track-day, .meter-bar, .meter-fill, .scale-bar, .scale-block, .scale-pin, .why-mark, .flow-col i { forced-color-adjust: none; }
+}
+</style>
+
+<main class="sheet" id="app">
+  <h1 class="vh" id="h-app" hidden>After You</h1>
+  <span id="why-note" hidden>Marked: the first time a house does as it learned from you.</span>
+
+  <section class="view" data-view="opening" aria-labelledby="h-opening">
+    <div class="opening">
+      <div class="opening-text">
+        <p class="sheet-no" id="opening-valley" hidden></p>
+        <h1 id="h-opening" tabindex="-1">After You</h1>
+        <p class="premise" id="opening-premise">Twelve days of harvest in a valley of eight houses. Then you leave, and the valley goes on without you.</p>
+        <ul class="stakes" id="opening-lines" role="list">
+          <li>Each day, each of your four neighbours has a crop that will not wait. You can send a hand or stay home. So can they.</li>
+          <li>A hand sent costs you 1 measure of your own grain. A hand that arrives is worth 3 to the house it reaches.</li>
+          <li>What you do, others see. Some will take it up as their own way, at the end of every fourth day.</li>
+          <li>At the end two things are counted: whether your store is enough for winter, and whether the valley is better or worse off for the ways you left.</li>
+        </ul>
+        <div class="actions"><button type="button" class="btn btn-primary" id="begin">Begin</button></div>
+        <div class="past" id="opening-past" hidden>
+          <h2 class="label" id="opening-past-head">Earlier lives</h2>
+          <ol id="opening-past-list" role="list"></ol>
+          <details id="opening-past-more" hidden>
+            <summary id="opening-past-more-head"></summary>
+            <ol id="opening-past-rest" role="list"></ol>
+          </details>
+        </div>
+      </div>
+      <figure class="map-figure">
+        <div class="map" id="map-opening"></div>
+      </figure>
+    </div>
+  </section>
+
+  <section class="view" data-view="day" aria-labelledby="h-day" hidden>
+    <header class="daybar">
+      <div>
+        <div class="day-title">
+          <h2 id="h-day" tabindex="-1" class="num">Day 1 of 12</h2>
+          <span class="note" id="day-last" hidden>The last day.</span>
+          <span class="sheet-no" id="day-valley"></span>
+        </div>
+        <div class="track" id="day-track" role="img"></div>
+      </div>
+      <div>
+        <div class="store-line"><span class="label" id="store-head">Winter store</span><span class="store-text" id="store-text"></span></div>
+        <div class="meter" id="store-meter" aria-hidden="true"></div>
+        <p class="small" id="store-old"></p>
+      </div>
+    </header>
+
+    <div class="day-grid">
+      <div class="day-left">
+        <figure class="map-figure" id="day-map-figure">
+          <div class="map" id="map-day"></div>
+        </figure>
+        <div class="map-bar" id="map-bar">
+          <details class="key" id="map-day-key" open>
+            <summary id="map-day-key-head">Map key</summary>
+            <div class="legend" id="map-day-legend"></div>
+          </details>
+          <button type="button" class="map-fold" id="map-fold" aria-expanded="true" aria-controls="day-map-figure">Fold the map away</button>
+          <p class="small map-hint" id="map-hint">Choose on the cards, or on a holding on the map.</p>
+        </div>
+        <section class="ways" aria-labelledby="h-ways">
+          <div class="ways-head">
+            <h3 class="label" id="h-ways">Your ways</h3>
+            <div class="legend" id="ways-legend" aria-hidden="true"></div>
+          </div>
+          <p class="small" id="ways-note">A house that takes up your ways does as these counts say.</p>
+          <div class="ways-rows" id="ways-rows"></div>
+        </section>
+      </div>
+      <div class="day-right">
+        <p class="status" id="day-status" aria-live="polite" tabindex="-1"></p>
+        <div class="cards" id="cards"></div>
+        <section class="season-end" id="season-end" aria-labelledby="h-season" hidden>
+          <h3 id="h-season" tabindex="-1"></h3>
+          <div class="season-body" id="season-body"></div>
+        </section>
+        <div class="day-actions" id="day-actions">
+          <button type="button" class="btn btn-primary" id="close-day" disabled>Close the day</button>
+          <button type="button" class="btn btn-primary" id="next-day" hidden disabled>Next day</button>
+        </div>
+        <section class="elsewhere" id="elsewhere" aria-labelledby="h-elsewhere" hidden>
+          <h3 class="label" id="h-elsewhere">Elsewhere today</h3>
+          <div class="elsewhere-body" id="elsewhere-body"></div>
+        </section>
+        <p class="small ford-note" id="ford-note">A hand can be turned back at the ford. It then costs nothing and brings nothing. You only ever see whether one arrived.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" data-view="leaving" aria-labelledby="h-leaving" hidden>
+    <div class="leaving">
+      <div class="leaving-text">
+        <h2 id="h-leaving" tabindex="-1">The harvest is in</h2>
+        <p class="lead" id="leaving-store"></p>
+        <div class="meter" id="leaving-meter" aria-hidden="true"></div>
+        <h3 class="label" id="h-leave">What you leave</h3>
+        <p class="small" id="leave-sub">Your heir takes the holding and does in each situation as you did.</p>
+        <div class="leave-rows ways-rows" id="leaving-ways"></div>
+        <p class="leave-kin" id="leaving-kin"></p>
+        <div class="actions"><button type="button" class="btn btn-primary" id="leave">Leave the valley</button></div>
+      </div>
+      <figure class="map-figure">
+        <div class="map" id="map-leaving"></div>
+      </figure>
+    </div>
+  </section>
+
+  <section class="view" data-view="afterwards" aria-labelledby="h-after" hidden>
+    <header class="afterbar">
+      <div>
+        <h2 id="h-after" tabindex="-1">Thirty seasons without you.</h2>
+        <p class="small" id="after-one"></p>
+      </div>
+      <div class="afterbar-right">
+        <span class="counter" id="after-season"></span>
+        <button type="button" class="btn" id="skip">Skip</button>
+      </div>
+    </header>
+    <div class="now" id="after-now" aria-hidden="true" hidden>
+      <p class="label" id="now-head">As it happens</p>
+      <ol class="now-lines" id="now-lines" role="list"></ol>
+    </div>
+    <div class="after-grid">
+      <div class="after-left">
+        <figure class="map-figure">
+          <div class="map" id="map-after"></div>
+          <figcaption class="legend" id="map-after-legend"></figcaption>
+        </figure>
+        <ul class="vh" id="after-houses" role="list"></ul>
+      </div>
+      <div class="after-right">
+        <div class="flow">
+          <p class="label" id="flow-head"></p>
+          <div class="flow-strip" id="flow-strip" role="img"></div>
+          <div class="flow-axis" id="flow-axis" aria-hidden="true"></div>
+          <p class="small flow-rule" id="flow-rule">The valley holds if, over the last ten seasons, at least half the hands that could arrive still do.</p>
+        </div>
+        <h3 class="label" id="h-ticker">As it happens</h3>
+        <ol class="ticker" id="ticker" role="list" aria-labelledby="h-ticker"></ol>
+        <p class="vh" id="after-say" aria-live="polite"></p>
+        <div class="after-close" id="after-close">
+          <div class="after-end" id="after-end" tabindex="-1" hidden>
+            <p id="after-held"></p>
+            <p id="after-ways"></p>
+          </div>
+          <p class="small num" id="after-counting" hidden></p>
+          <div class="actions"><button type="button" class="btn btn-primary" id="to-chronicle" hidden disabled>See the count</button></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" data-view="chronicle" aria-labelledby="h-chronicle" hidden>
+    <header class="chron-head">
+      <h2 id="h-chronicle" tabindex="-1">The Chronicle</h2>
+      <p class="sheet-no" id="chron-valley"></p>
+    </header>
+    <div class="chron-grid">
+      <div class="chron-main">
+        <section class="chron-block" aria-labelledby="h-chron-house">
+          <h3 class="label" id="h-chron-house">House</h3>
+          <p class="chron-figure" id="chron-house"></p>
+          <div class="meter" id="chron-meter" aria-hidden="true"></div>
+        </section>
+        <section class="chron-block" aria-labelledby="h-chron-valley">
+          <h3 class="label" id="h-chron-valley">Valley</h3>
+          <p id="chron-valley-line"></p>
+          <p class="small" id="chron-explain-1"></p>
+          <p class="small" id="chron-explain-2"></p>
+          <p class="mark-line" id="chron-mark"></p>
+          <p id="chron-mark-means"></p>
+          <p class="small" id="chron-noise"></p>
+          <div class="rows" id="chron-rows"></div>
+          <div class="legend" id="chron-rows-legend" aria-hidden="true"></div>
+        </section>
+        <section class="chron-block" aria-labelledby="h-chron-range">
+          <h3 class="label" id="h-chron-range">Where that sits</h3>
+          <div class="scale" id="chron-scale" role="img"></div>
+          <p class="small" id="chron-scale-axis"></p>
+          <p id="chron-range"></p>
+          <p class="small" id="chron-range-note"></p>
+        </section>
+      </div>
+      <div class="chron-side">
+        <div class="seal" id="chron-seal" hidden></div>
+        <section class="chron-block" id="chron-last-block" aria-labelledby="h-chron-last" hidden>
+          <h3 class="label" id="h-chron-last">The last day</h3>
+          <p id="chron-last"></p>
+        </section>
+        <section class="chron-block" aria-labelledby="h-chron-mattered">
+          <h3 class="label" id="h-chron-mattered">The way that mattered most</h3>
+          <p id="chron-mattered"></p>
+        </section>
+        <section class="chron-block" aria-labelledby="h-chron-became">
+          <h3 class="label" id="h-chron-became">What became of your ways</h3>
+          <p class="small" id="chron-became-sub">In the future you watched</p>
+          <ol class="became" id="chron-became" role="list"></ol>
+        </section>
+        <div class="actions">
+          <button type="button" class="btn btn-primary" id="again">Live another life</button>
+          <button type="button" class="btn btn-quiet" id="again-same">Live this valley again</button>
+        </div>
+        <div class="past" id="chron-past" hidden>
+          <h3 class="label" id="chron-past-head">Earlier lives</h3>
+          <ol id="chron-past-list" role="list"></ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<script src="engine.js"></script><script src="words.js"></script><script src="app.js"></script>
+</body></html>
