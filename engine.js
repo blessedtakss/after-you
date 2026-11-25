@@ -49,6 +49,87 @@
  *   - verdict(): whatIfBaseHolds / whatIfBasePct (what every what-if and the last-day replay
  *     are compared with), seal, range.scaleLow / scaleHigh; the last-day replay runs unless
  *     options.lastDay is false, whether or not the what-ifs run.
+ *  Third round (places): nothing above changes for the valley. createLife(seed) and
+ *     createLife(seed, 'valley') are the valley, output for output.
+ *
+ * PLACES: other places where the dilemma works differently (all of this is new in the third round)
+ *   A place is a set of parameters (below) that createLife carries in life.params into every day,
+ *   clone, replay and future. AfterYou.PLACES holds the presets, in play order PLACE_ORDER:
+ *     valley      the valley (no parameter moved)
+ *     banks       fishing grounds: a stock on each tie that keeping off fills and fishing across empties
+ *     watch       border towers: standing down together pays most, standing down alone costs
+ *     bridges     carters at narrow bridges: someone must give way, and not always the same one
+ *     saltmarket  a guild price: holding together pays the sellers and costs the town (charter 'breaks')
+ *   The page chooses a place by key: createLife(seed, 'banks'). life.place records the key (absent
+ *   when createLife was given no key: then the Life is the valley moved by any overrides given).
+ *   The page never names the parameters, the custom's numbers or the reference ways.
+ *
+ *   Place parameters (in params; every default is the valley's behaviour):
+ *     S, H         the stakes. One house's gain on one tie on one day is
+ *                    B x level x [their hand arrived] - C x [my hand arrived]
+ *                    + S x [both arrived] - H x [neither arrived]
+ *                  (level is 1 without STOCK). B, C, S, H and STORE_START are whole numbers.
+ *     CUSTOM       the place's custom, five 0s or 1s (default [1, 1, 0, 1, 0], the old way). It is
+ *                  kin's founding way, the reference Life (need and baseline), the heir's way where
+ *                  the player left no precedent, and the habit a never-met situation defaults to in
+ *                  the 'habit' replay. A middling chance throws (the custom's own Life must have a
+ *                  mark of exactly 0).
+ *     STORE_START  measures in house 0's store before day 1 (also in the reference Life's). The need
+ *                  moves up by the same amount, so whether the house is kept is unchanged by it.
+ *     STOCK        null, or { start, min, max, delta: [d0, d1, d2] } (whole numbers): a level on each of
+ *                  the sixteen ties. A hand that arrives is worth B x the level before today's change;
+ *                  then the level moves by delta[number of hands that arrived on that tie today] and
+ *                  stays within min..max. The level belongs to the ground: a newcomer in the Afterwards
+ *                  takes over its holding's ties at their levels.
+ *     FLOW_KIND    what "help flow" counts each season, and so what "holds" means:
+ *                    'hands' hands that arrived / hands expected to arrive (the valley)
+ *                    'one'   share of tie-days on which exactly one hand arrived
+ *                    'both'  share of tie-days on which both hands arrived
+ *                    'stock' the season's mean tie level (each day's level after its change) / STOCK.start
+ *                  It stays a fraction near 0..1, so HOLD_LINE and the 'frays' band keep their meaning.
+ *     CHARTER      'holds' (valley) | 'breaks'. Under 'breaks' the place is better off when the flow
+ *                  falls: held[i], runFuture().holds, holdsPct, baselinePct and level all count the
+ *                  CHARTER's good outcome (late flow below HOLD_LINE), so the mark, rank, best and worst,
+ *                  the what-ifs, the last-day delta and the seal need no code of their own.
+ *     REPLAY       'valley' | 'habit' | 'season': which day-12 acts the last-day replay reverses (see
+ *                  verdict()). 'season' is 'habit' plus the season replay: days REPLAY_FROM..12
+ *                  played again with the house's habit as it stood before REPLAY_FROM (never met:
+ *                  the custom), the neighbours' draws as lived; the seal is also withheld when the
+ *                  mark is clear but would not be with that replay's delta (seal.wonOnSeason).
+ *     REPLAY_FROM  read only under REPLAY 'season': the first day of the season replay, a whole
+ *                  number 2..12 (default 9, the first day of the last season).
+ *     SEAL_MARK    optional (default 5, the valley's): how far the mark must clear the custom's,
+ *                  beyond two standard errors, for the seal (markClear) and in the won clauses. A place
+ *                  whose marks run large (one habit moving a fifth of the futures) sets it higher.
+ *     RANGE_WAYS   null (the valley's thirteen) or the place's own list of plain ways behind
+ *                  verdict().range. An explicit list must contain CUSTOM (it throws otherwise); with
+ *                  null and a custom outside the thirteen, the custom is appended. Read range.of.
+ *     FOUNDERS     null (the valley's seats) or { near: [three entries], far: [three or more kinds] }:
+ *                  the founder kinds of the three non-kin neighbours and the pool the three far houses
+ *                  are drawn from. A near entry is a kind or a list of kinds (one is drawn by seed).
+ *                  Kinds: 'firm', 'soft', 'taker', 'wary', 'steady', 'poacher' (fishes across a
+ *                  stranger and anyone who lets it, never lets a slip go, takes peace after a
+ *                  quarrel: [0, 1, 0, 0..0.15, 0.6..0.9]; never seated in the valley). The valley is
+ *                  { near: ['taker', 'soft', ['firm', 'wary', 'steady']], far: FAR_POOL }.
+ *
+ *   What the page reads differently in a place (none of it applies in the valley):
+ *     - today().neighbours[i].stock: the level on that tie today (a hand arriving today is worth
+ *       B x stock). playDay().results[i].stock (the level the day was played on) and .stockAfter
+ *       (after today's change); kinWith[i].stock and .stockAfter the same for kin's ties.
+ *       runFuture().seasons[k].ties: the sixteen tie levels at the season's end (tie order: tieList).
+ *       Present only when STOCK is set.
+ *     - payoff and gained follow the place's stakes (with STOCK, payoffs differ day by day).
+ *     - Under CHARTER 'breaks': holds, holdsPct, held, baselinePct, level and every row of the range
+ *       count futures in which the town is better off (the ring broke). lateFlow, meanFlow,
+ *       worstStretch and seasons[k].flow stay the flow itself, which is now the bad side: the
+ *       Afterwards strip must take its good side from life.params.CHARTER.
+ *     - verdict().range.of can differ from 13 (read it; never print "thirteen").
+ *     - Under REPLAY 'habit' the lastDay entry has rule 'habit', ties [4 x { id, name, situation,
+ *       lived, replayed, against }] and changed lists only the reversed ties, each with lived and
+ *       replayed (true = sent a hand); seal has wonOnLastDay. A valley entry has neither field.
+ *       REPLAY 'season' does the same and adds verdict().season and seal.wonOnSeason (see verdict());
+ *       the Life then carries life.season (the Life before REPLAY_FROM and the choices since).
+ *     - The need sentence must not lean on "the old way": oldWayPurse is the custom's purse there.
  *
  * FOR THE PAGE: wording that follows from the model (where an earlier page brief disagrees, this wins)
  *   - Counts of futures: say "held in {holds} of {futures}" from the verdict's own fields (2000
@@ -86,12 +167,15 @@
  *
  * PUBLIC API  (AfterYou.*)
  *
- *   createLife(seed, overrides?) -> life
+ *   createLife(seed, place?, overrides?) -> life
  *       seed: an integer, a string of digits ('42' is the same valley as 42), or any other
  *       non-empty string (hashed). A missing, empty or non-finite seed throws.
  *       life.seed is the valley number to store and show: an integer 0..4294967295, and
  *       createLife(life.seed) gives the same valley again (numbers outside that range wrap).
- *       overrides: optional { PARAM: value } on top of AfterYou.params.
+ *       place: optional, a key of AfterYou.PLACES ('valley', 'banks', ...; an unknown key throws)
+ *       or an overrides object { PARAM: value } on top of AfterYou.params (the earlier form).
+ *       overrides: optional { PARAM: value } on top of the place (for tuning). A Life is the same
+ *       place again from (life.seed, life.place) when no overrides were given.
  *       life = {
  *         seed, day (1..12, 13 when over), over (bool), kin (house id), neighbours [1,2,6,7],
  *         purse, need, params,
@@ -111,7 +195,11 @@
  *         lastDay: null | { before, sent }   the Life as it stood before day 12 and the choices
  *                                            made on it (internal, used by the verdict's replay)
  *         old: { purse, end }       the old-way reference Life: its purse, and its end state (internal)
+ *         place: the PLACES key, when createLife was given one
+ *         stock: [16 x level]       only when params.STOCK is set: the level on each tie (tie order:
+ *                                   tieList; the page reads today().neighbours[i].stock instead)
  *       }
+ *       In a place, "the old way" in this header means the place's custom (params.CUSTOM).
  *       need: fixed for the Life, set from life.old.purse (what the old way earns on this same
  *       tape):   need = NEED_PIVOT + NEED_WEIGHT x (old.purse - NEED_PIVOT) + MARGIN, rounded,
  *       and never less than old.purse + 1 (the old way itself always falls short). With the
@@ -299,8 +387,27 @@
  *              there. delta is what those hands would have been worth to the valley, in points;
  *              purse is what they would have left in the store. It does not depend on
  *              options.whatIfs; it is null as well when options.lastDay is false.
+ *              Under params.REPLAY 'habit' (places) the replay reverses instead every day-12 act
+ *              that went against the house's own habit in that tie's situation as it stood before
+ *              day 12 (sent h of n with h/n >= 0.5 means its habit was to send; a situation never
+ *              met means the custom's habit), keeps the neighbours' acts as lived and runs the same
+ *              futures. It is null when no act went against habit. The entry then also carries
+ *              rule: 'habit', ties: [4 x { id, name, situation, lived, replayed, against }] in the
+ *              order [1, 2, 6, 7] (lived / replayed: true = sent a hand), and changed lists the
+ *              reversed ties as { id, name, situation, lived, replayed, h, n } (h of n: the habit
+ *              the act went against; n 0 = never met, the custom's habit).
  *         seal: null when options.lastDay is false, else
  *              { earned, houseKept, markClear, boughtOnLastDay, lastDayCost }
+ *              (+ wonOnLastDay under REPLAY 'habit': there is a lastDay entry, markClear, and
+ *              mark + lastDay.delta - 2 x markSE < 5, so the mark was clear only by what the house
+ *              did against its habit on day 12; earned then also needs !wonOnLastDay)
+ *              (+ wonOnSeason under REPLAY 'season': there is a season entry, markClear, and
+ *              mark + season.delta - 2 x markSE < 5, so the mark was clear only by what the house
+ *              did in the last season apart from the habit it had before it; earned then also needs
+ *              !wonOnSeason. A withheld seal passes silently, as for the other clauses.)
+ *         season: REPLAY 'season' only, present when the season replay changed an act:
+ *              { kind: 'season', from, changed: [{ day, id, name, situation, lived, replayed }],
+ *              purse, houseKept, holds, holdsPct, futures (m), delta, se }. Never `mattered`.
  *              earned: "House kept, valley better off" may be shown. It is
  *                houseKept && markClear && !boughtOnLastDay && !lastDayCost, where
  *                houseKept        purse >= need
@@ -344,10 +451,16 @@
  *   draw(seed, purpose, t, a, b, future) -> number in [0, 1)   the keyed draw itself
  *   PURPOSES     { ACT, FORD, PICK, MODEL, ADOPT, MUT }: purpose codes of the main draws (testing)
  *   params       the tunables (defaults used by createLife): FOG, K, MUT, MARGIN, NEED_WEIGHT,
- *                NEED_PIVOT, R_LIFE, R_AFTER, HOLD_LINE, ARRIVE_FROM, ARRIVE_TO, FUTURES, WHATIF_FUTURES
+ *                NEED_PIVOT, R_LIFE, R_AFTER, HOLD_LINE, ARRIVE_FROM, ARRIVE_TO, FUTURES, WHATIF_FUTURES,
+ *                and the place parameters B, C, S, H, CUSTOM, STORE_START, STOCK, FLOW_KIND, CHARTER,
+ *                REPLAY, RANGE_WAYS, FOUNDERS (see PLACES above)
+ *   PLACES       { valley: {}, banks: {...}, watch: {...}, bridges: {...}, saltmarket: {...} }: the
+ *                parameters each place moves (never shown); PLACE_ORDER the keys in play order
  *   SITUATIONS   [5 x { key, title }]
  *   REFERENCE_WAYS  the nine customs of the specification (testing; never shown)
- *   RANGE_WAYS      the thirteen customs behind `range` (testing; never shown)
+ *   RANGE_WAYS      the thirteen customs behind `range` in the valley (testing; never shown)
+ *   rangeWays(life) the plain ways behind a Life's `range` (testing; never shown)
+ *   tieList      [16 x [a, b]]: the houses of each tie, in the order of life.stock and seasons[k].ties
  *   trace        null, or function(purpose, t, a, b, future, value) called for every draw consumed
  *                (set only for testing; slows the futures)
  */
@@ -372,7 +485,20 @@
     ARRIVE_FROM: 4,  // the newcomer arrives in a season drawn uniformly   tunable window
     ARRIVE_TO: 12,   //   from ARRIVE_FROM..ARRIVE_TO
     FUTURES: 2000,        // futures behind the two headline rows (the mark's standard error is about 1 point)
-    WHATIF_FUTURES: 1000  // futures behind each what-if, the last-day replay and each reference way
+    WHATIF_FUTURES: 1000, // futures behind each what-if, the last-day replay and each reference way
+
+    // The place parameters (see PLACES in the header). Each default is the valley's behaviour,
+    // and with all of them at their defaults every number the engine produces is the valley's.
+    S: 0,                 // added to each side's gain on a tie-day when both hands arrived
+    H: 0,                 // taken from each side's gain on a tie-day when neither hand arrived
+    CUSTOM: [1, 1, 0, 1, 0],  // the place's custom (0s and 1s only): the old way in the valley
+    STORE_START: 0,       // measures in house 0's store (and the reference Life's) before day 1
+    STOCK: null,          // null, or { start, min, max, delta: [d0, d1, d2] }: a level on each tie
+    FLOW_KIND: 'hands',   // what help flow counts: 'hands' | 'one' | 'both' | 'stock'
+    CHARTER: 'holds',     // 'holds': the place is better off when the flow holds; 'breaks': when it fails
+    REPLAY: 'valley',     // the last-day replay: 'valley' (stayed home after both helped) | 'habit'
+    RANGE_WAYS: null,     // null (the valley's thirteen) or the place's own plain ways behind `range`
+    FOUNDERS: null        // null (the valley's seats) or { near: [3 entries], far: [pool] }
   };
 
   // Founder bands [low, high]: each founding habit is low + (high - low) * a keyed draw.
@@ -381,13 +507,17 @@
     soft:  { short: [0.7, 1.0] },                       // [1, 1, short, 1, short]
     taker: { back: [0, 0.15] },                         // [0, back, 0, back, 0]
     wary:  { short: [0, 0.15], truce: [0.3, 0.5] },     // [0, 1, short, 1, truce]
-    steady: { jitter: 0.1 }                             // [1, 1, 0, 0, 1], each up to 0.1 inward
+    steady: { jitter: 0.1 },                            // [1, 1, 0, 0, 1], each up to 0.1 inward
+    poacher: { back: [0, 0.15], truce: [0.6, 0.9] }     // [0, 1, 0, back, truce] (fix-banks: not in the valley)
   };
   var FAR_POOL = ['firm', 'firm', 'firm', 'soft', 'wary', 'steady'];   // three drawn, no taker
+  // The valley's three non-kin neighbours: a taker, a soft house and one of three (drawn by seed).
+  // A list entry draws one kind; FOUNDERS.near takes the same form (see seatKinds).
+  var VALLEY_NEAR = ['taker', 'soft', ['firm', 'wary', 'steady']];
 
   var DAYS = 12, SEASON = 4, AFTER_SEASONS = 30, FINAL_SEASONS = 10, STRETCH = 5;
   var N = 8, NT = 16, YOU = 0, NEWCOMER = 8;
-  var OLD_WAY = [1, 1, 0, 1, 0];
+  // The old way [1, 1, 0, 1, 0] is PARAMS.CUSTOM's default: every use reads params.CUSTOM.
   var NEAR_LINE = 0.05;   // a future within this of HOLD_LINE "frays" (runFuture().level)
   var CLEAR_Z = 3;        // a habit what-if stands out when |delta| >= CLEAR_Z standard errors
                           // (ten candidates are compared, so two standard errors is not enough)
@@ -412,6 +542,80 @@
   ];
   var NAMES = ['Kesh', 'Maren', 'Tobin', 'Hale', 'Wren', 'Ansel', 'Brix', 'Corra',
                'Fenn', 'Garrow', 'Odile', 'Dunmore', 'Pell', 'Quill', 'Rusk', 'Yarrow'];
+
+  // ---- places -------------------------------------------------------------------------------
+
+  // What each place moves away from the valley's parameters (the tuners set these numbers; the
+  // keys and their meaning are in the header). Never shown to the player.
+  var PLACES = {
+    valley: {},
+    // Fishing grounds (also shared pasture). A hand is keeping off the other's water; the bank on a
+    // tie fills by one when both keep off or one alone does, and empties by four when both fish
+    // across. What holds is the ground itself: the late mean level against HOLD_LINE (7/6 of the
+    // start). A poacher sits in the near taker's seat: it fishes across strangers but takes peace
+    // after a quarrel, so ending a quarrel can be seen to work (fix-banks).
+    banks: {
+      B: 1, C: 2, K: 1, FOG: 0.04, R_AFTER: 2.5,
+      STOCK: { start: 6, min: 1, max: 9, delta: [-4, 1, 1] },
+      FLOW_KIND: 'stock', HOLD_LINE: 7 / 6,
+      CUSTOM: [1, 1, 0, 1, 0],
+      FOUNDERS: { near: ['poacher', 'soft', ['firm', 'wary', 'steady']], far: ['firm', 'firm', 'firm', 'soft', 'wary', 'steady'] },
+      NEED_PIVOT: 181, NEED_WEIGHT: 0.5, MARGIN: 53,
+      REPLAY: 'habit',
+      // The valley's thirteen with [1,1,0.67,1,0] replaced by [1,1,0.5,1,1] (ends a quarrel).
+      RANGE_WAYS: [[1, 1, 1, 1, 1], [0, 0, 0, 0, 0], [1, 1, 0, 1, 0], [1, 1, 0.33, 1, 0.33], [1, 1, 0.5, 1, 0.5],
+                   [1, 1, 0.67, 1, 0.67], [1, 1, 0, 0, 1], [1, 1, 0, 0, 0], [1, 1, 0.33, 1, 0],
+                   [1, 1, 0.5, 1, 0], [1, 1, 0.5, 1, 1], [1, 1, 1, 1, 0], [0, 1, 1, 1, 0]]
+    },
+    // Border towers. A hand is standing down. Both stand down +7, you alone -5, they alone +6,
+    // both keep watch -3: together pays most, alone costs, there is nothing to take. One night in
+    // ten a fire is misread (FOG). A taker and a fearful (wary) tower are always next door. The
+    // custom never goes first: it answers a tower that stands down, lets a single fire pass, and
+    // waits when both keep watch (fix-watch). It is among the valley's thirteen, so the range is
+    // the valley's. The season replay (confirm-watch): a tower that reopens standoffs against its
+    // own habit on days 9-11 and plays day 12 by the habit that made is not sealed for it.
+    watch: {
+      B: 6, C: 5, S: 6, H: 3, K: 1.5, FOG: 0.1,
+      CUSTOM: [0, 1, 1, 1, 0],
+      FLOW_KIND: 'both', HOLD_LINE: 0.3,
+      FOUNDERS: { near: ['taker', 'soft', 'wary'], far: ['firm', 'firm', 'firm', 'soft', 'wary', 'steady'] },
+      NEED_PIVOT: 22, NEED_WEIGHT: 0.5, MARGIN: 112,
+      REPLAY: 'season'
+    },
+    // Carters at narrow bridges. A hand is giving way. Both waiting: nobody crosses (S -2 cancels
+    // the crossing); both driving on: wheels lock (H 2). What holds is the road: tie-days on which
+    // exactly one gave way. Two takers among the three near carters. Word travels slowly (K 0.25)
+    // and carters look round four times a season (R_AFTER 4) (fix-bridges).
+    bridges: {
+      B: 3, C: 1, S: -2, H: 2, FOG: 0.06, K: 0.25, R_AFTER: 4,
+      FLOW_KIND: 'one', HOLD_LINE: 0.5,
+      FOUNDERS: { near: ['taker', 'taker', ['firm', 'wary', 'steady']], far: ['firm', 'firm', 'firm', 'soft', 'wary', 'steady'] },
+      // With two takers near, the custom earns a median of -38 in the twelve days (pivot); the
+      // starting store of 50 and margin 21 keep every need above zero.
+      STORE_START: 50,
+      NEED_PIVOT: -38, NEED_WEIGHT: 0.5, MARGIN: 21,
+      REPLAY: 'habit',
+      RANGE_WAYS: [[1, 1, 1, 1, 1], [0, 0, 0, 0, 0], [1, 1, 0, 1, 0], [1, 1, 0, 1, 1], [1, 0, 0, 1, 1], [1, 0.5, 0, 1, 1],
+                   [0.5, 0.5, 0, 1, 0.5], [1, 0.5, 0, 1, 0.5], [0, 0, 1, 0, 1], [0, 0, 1, 0, 0.5], [1, 1, 0, 0, 1],
+                   [0.5, 0.5, 0.5, 0.5, 0.5], [1, 0.5, 0.5, 1, 0.5]]
+    },
+    // A guild of salt sellers. A hand is holding the guild price. Holding together pays the
+    // sellers; what counts is the town, which is better off in the futures where the ring breaks
+    // (tie-days on which both held fall below HOLD_LINE). The custom is the guild's rule
+    // [1,1,0,1,0] (the valley's old way, already among the thirteen, so the range is the valley's).
+    // fix-saltmarket: the season replay (REPLAY 'season') and a seal mark of 20 (one habit here
+    // moves a fifth of the futures, so "clearly better" is set at that); the need margin 14.
+    saltmarket: {
+      B: 3, C: 1, S: 2, H: 0,
+      CUSTOM: [1, 1, 0, 1, 0],
+      CHARTER: 'breaks', FLOW_KIND: 'both', HOLD_LINE: 0.5,
+      NEED_PIVOT: 104, NEED_WEIGHT: 0.5, MARGIN: 14,
+      REPLAY: 'season', SEAL_MARK: 20
+    }
+  };
+  var PLACE_ORDER = ['valley', 'banks', 'watch', 'bridges', 'saltmarket'];
+  var FLOW_CODE = { hands: 0, one: 1, both: 2, stock: 3 };
+  var KINDS = ['firm', 'soft', 'taker', 'wary', 'steady', 'poacher'];
 
   // ---- the ring -----------------------------------------------------------------------------
 
@@ -510,6 +714,76 @@
   function sameCustom(a, b) { for (var s = 0; s < 5; s++) if (a[s] !== b[s]) return false; return true; }
   function chanceToCopy(incModel, incSelf, K) { return 1 / (1 + Math.exp(-(incModel - incSelf) / K)); }
   function need(cond, what) { if (!cond) throw new Error('AfterYou: ' + what); }
+
+  // ---- place helpers ---------------------------------------------------------------------------
+
+  function isWhole(x) { return typeof x === 'number' && isFinite(x) && Math.floor(x) === x; }
+  function isWay(w) {
+    if (!Array.isArray(w) || w.length !== 5) return false;
+    for (var s = 0; s < 5; s++) if (typeof w[s] !== 'number' || !(w[s] >= 0 && w[s] <= 1)) return false;
+    return true;
+  }
+  // The place parameters must make sense before a Life is built on them. Whole-number stakes,
+  // store and levels keep every store a whole number (a store shown as 64 is never 63.6).
+  function checkPlace(P) {
+    need(isWhole(P.B) && isWhole(P.C) && isWhole(P.S) && isWhole(P.H), 'B, C, S and H must be whole numbers');
+    need(isWhole(P.STORE_START), 'STORE_START must be a whole number');
+    need(isWay(P.CUSTOM), 'CUSTOM needs five chances');
+    for (var s = 0; s < 5; s++) need(P.CUSTOM[s] === 0 || P.CUSTOM[s] === 1, 'CUSTOM must be 0s and 1s');
+    var ST = P.STOCK;
+    if (ST !== null) {
+      need(ST && typeof ST === 'object' && Array.isArray(ST.delta) && ST.delta.length === 3, 'STOCK needs { start, min, max, delta: [d0, d1, d2] }');
+      need(isWhole(ST.start) && isWhole(ST.min) && isWhole(ST.max) && isWhole(ST.delta[0]) && isWhole(ST.delta[1]) && isWhole(ST.delta[2]),
+           'STOCK levels and steps must be whole numbers');
+      need(ST.min >= 0 && ST.min <= ST.start && ST.start <= ST.max && ST.start > 0, 'STOCK needs 0 <= min <= start <= max and start > 0');
+    }
+    need(typeof P.FLOW_KIND === 'string' && FLOW_CODE.hasOwnProperty(P.FLOW_KIND), "FLOW_KIND must be 'hands', 'one', 'both' or 'stock'");
+    need(P.FLOW_KIND !== 'stock' || ST !== null, "FLOW_KIND 'stock' needs STOCK");
+    need(P.CHARTER === 'holds' || P.CHARTER === 'breaks', "CHARTER must be 'holds' or 'breaks'");
+    need(P.REPLAY === 'valley' || P.REPLAY === 'habit' || P.REPLAY === 'season', "REPLAY must be 'valley', 'habit' or 'season'");
+    if (P.REPLAY === 'season' && P.REPLAY_FROM !== undefined) need(isWhole(P.REPLAY_FROM) && P.REPLAY_FROM >= 2 && P.REPLAY_FROM <= DAYS, 'REPLAY_FROM must be a whole number 2..12');
+    if (P.SEAL_MARK !== undefined) need(typeof P.SEAL_MARK === 'number' && isFinite(P.SEAL_MARK) && P.SEAL_MARK >= 0 && P.SEAL_MARK < 100, 'SEAL_MARK must be a number 0..100');
+    if (P.RANGE_WAYS !== null) {
+      need(Array.isArray(P.RANGE_WAYS) && P.RANGE_WAYS.length > 0 && P.RANGE_WAYS.every(isWay), 'RANGE_WAYS must be a list of five-chance ways');
+      need(P.RANGE_WAYS.some(function (w) { return sameCustom(w, P.CUSTOM); }), 'RANGE_WAYS must contain CUSTOM');
+    }
+    var F = P.FOUNDERS;
+    if (F !== null) {
+      need(F && Array.isArray(F.near) && F.near.length === 3, 'FOUNDERS needs near: [three entries]');
+      F.near.forEach(function (e) {
+        var list = Array.isArray(e) ? e : [e];
+        need(list.length > 0 && list.every(function (k) { return KINDS.indexOf(k) >= 0; }), 'FOUNDERS.near: unknown kind ' + JSON.stringify(e));
+      });
+      need(F.far === undefined || (Array.isArray(F.far) && F.far.length >= 3 && F.far.every(function (k) { return KINDS.indexOf(k) >= 0; })),
+           'FOUNDERS.far needs three or more known kinds');
+    }
+  }
+  // The plain ways behind verdict().range: the place's own list, or the valley's thirteen with the
+  // custom appended when it is not among them (so range.oldWayPct always has the custom's row).
+  function rangeWaysOf(P) {
+    if (P.RANGE_WAYS) return P.RANGE_WAYS;
+    for (var k = 0; k < RANGE_WAYS.length; k++) if (sameCustom(RANGE_WAYS[k], P.CUSTOM)) return RANGE_WAYS;
+    return RANGE_WAYS.concat([P.CUSTOM.slice()]);
+  }
+  // Whether a future's late flow is the charter's good outcome: the flow holds ('holds') or the
+  // ring has broken ('breaks'). Every count of futures in the verdict goes through this.
+  function heldBy(late, P) { return P.CHARTER === 'breaks' ? late < P.HOLD_LINE : late >= P.HOLD_LINE; }
+  // A tie's level after a day on which `hands` hands (0, 1 or 2) arrived on it.
+  function stockStep(level, hands, ST) {
+    var v = level + ST.delta[hands];
+    return v < ST.min ? ST.min : v > ST.max ? ST.max : v;
+  }
+  // The kinds of the three non-kin neighbours, seat by seat before the seats are shuffled. A list
+  // entry draws one kind with P_THIRD, sub-key = its place among the list entries (so the valley's
+  // single list, the third seat, draws exactly what it always drew).
+  function seatKinds(entries, seed) {
+    var out = [], lists = 0;
+    for (var i = 0; i < entries.length; i++) {
+      var e = entries[i];
+      out.push(Array.isArray(e) ? e[Math.floor(draw(seed, P_THIRD, 0, lists++, 0, 0) * e.length)] : e);
+    }
+    return out;
+  }
   // How many houses reconsider this season. A fractional rate (1.5) means one house, and a
   // second one in half the seasons, by keyed draw.
   function roundCount(rate, seed, season, f) {
@@ -518,7 +792,7 @@
     return Math.min(whole, N);
   }
 
-  function founder(archetype, seed, id) {
+  function founder(archetype, seed, id, custom) {
     function u(k) { return draw(seed, P_JITTER, 0, id, k, 0); }
     function band(b, k) { return b[0] + (b[1] - b[0]) * u(k); }
     var B = BANDS[archetype], m, j;
@@ -530,26 +804,31 @@
       case 'taker': m = band(B.back, 0); return [0, m, 0, m, 0];
       case 'wary': return [0, 1, band(B.short, 0), 1, band(B.truce, 1)];
       case 'steady': j = B.jitter; return [1 - j * u(0), 1 - j * u(1), j * u(2), j * u(3), 1 - j * u(4)];
-      default: return OLD_WAY.slice();   // kin: the old family way, exactly
+      case 'poacher': return [0, 1, 0, band(B.back, 0), band(B.truce, 1)];
+      default: return custom.slice();   // kin: the family way of the place (the old way), exactly
     }
   }
 
   // ---- the Life -----------------------------------------------------------------------------
 
+  // A parameter value of its own for each Life (CUSTOM, STOCK and the lists are objects; a Life
+  // must never share one with AfterYou.params, PLACES or the caller's overrides).
+  function ownCopy(v) { return v !== null && typeof v === 'object' ? JSON.parse(JSON.stringify(v)) : v; }
+
   function newLife(seedIn, overrides) {
     var P = {}, k, i;
-    for (k in PARAMS) P[k] = PARAMS[k];
-    if (overrides) for (k in overrides) P[k] = overrides[k];
+    for (k in PARAMS) P[k] = ownCopy(PARAMS[k]);
+    if (overrides) for (k in overrides) P[k] = ownCopy(overrides[k]);
+    checkPlace(P);
     var seed = seedInt(seedIn), nb = NBR[YOU];
     var kin = nb[Math.floor(draw(seed, P_KIN, 0, 0, 0, 0) * nb.length)];
 
-    var arch = new Array(N);
+    var arch = new Array(N), F = P.FOUNDERS;
     arch[YOU] = 'you'; arch[kin] = 'kin';
-    var third = ['firm', 'wary', 'steady'][Math.floor(draw(seed, P_THIRD, 0, 0, 0, 0) * 3)];
-    var near = ['taker', 'soft', third], seat = keyedOrder(seed, P_SEATS, 3), j = 0;
+    var near = seatKinds(F ? F.near : VALLEY_NEAR, seed), seat = keyedOrder(seed, P_SEATS, 3), j = 0;
     for (i = 0; i < nb.length; i++) if (nb[i] !== kin) arch[nb[i]] = near[seat[j++]];
-    var far = keyedOrder(seed, P_FAR, FAR_POOL.length);
-    for (i = 0, j = 0; i < N; i++) if (!arch[i]) arch[i] = FAR_POOL[far[j++]];
+    var pool = F && F.far ? F.far : FAR_POOL, far = keyedOrder(seed, P_FAR, pool.length);
+    for (i = 0, j = 0; i < N; i++) if (!arch[i]) arch[i] = pool[far[j++]];
 
     var nameAt = keyedOrder(seed, P_NAME, NAMES.length), houses = [], seen = {}, since = {}, seenFar = {}, changedDay = {};
     for (i = 0; i < N; i++) {
@@ -557,20 +836,27 @@
         id: i, name: NAMES[nameAt[i]],
         role: i === YOU ? 'you' : i === kin ? 'kin' : VISIBLE[i] ? 'neighbour' : 'far',
         archetype: arch[i],
-        custom: i === YOU ? null : founder(arch[i], seed, i),
+        custom: i === YOU ? null : founder(arch[i], seed, i, P.CUSTOM),
         source: i === YOU ? null : [ownSource(), ownSource(), ownSource(), ownSource(), ownSource()],
-        tally: emptyTally(), purse: 0, season: 0, way: i
+        tally: emptyTally(), purse: i === YOU ? P.STORE_START : 0, season: 0, way: i
       });
     }
     for (i = 0; i < nb.length; i++) { seen[nb[i]] = emptyTally(); since[nb[i]] = emptyTally(); seenFar[nb[i]] = emptyTally(); changedDay[nb[i]] = null; }
     var ways = [], last = [];
     for (i = 0; i < 5; i++) ways.push({ h: 0, n: 0, deeds: [] });
     for (i = 0; i < NT; i++) last.push(null);
-    return {
-      seed: seed, day: 1, over: false, kin: kin, neighbours: nb.slice(), purse: 0, need: null,
+    var life = {
+      seed: seed, day: 1, over: false, kin: kin, neighbours: nb.slice(), purse: P.STORE_START, need: null,
       params: P, houses: houses, ways: ways, seen: seen, seenSince: since, seenFar: seenFar, changedDay: changedDay,
       last: last, yesterday: null, rounds: [], seasonPay: [], lastDay: null, old: null
     };
+    // A place with a stock: every tie starts at the same level. (No field at all without one, so
+    // a valley Life is the same object as before, field for field.)
+    if (P.STOCK) {
+      life.stock = [];
+      for (i = 0; i < NT; i++) life.stock.push(P.STOCK.start);
+    }
+    return life;
   }
 
   // The winter need, from what the old way earns on this same tape.
@@ -585,26 +871,49 @@
   // measures, rounded up: 71 is a full harvest for the old way (three good neighbours, two
   // measures a day, twelve days, less the one hand a taker never returns). It is never less
   // than one measure more than the old way's purse, so the old way itself always falls short.
+  // In a place the old way is the place's custom. A starting store (STORE_START) sits in both
+  // purses, so the pivot moves with it: the need rises by exactly STORE_START and the house is
+  // kept on exactly the same Lives as without it. NEED_PIVOT stays a purse earned in the twelve days.
   function winterNeed(oldPurse, P) {
-    var pegged = Math.round(P.NEED_PIVOT + P.NEED_WEIGHT * (oldPurse - P.NEED_PIVOT) + P.MARGIN);
+    var pivot = P.NEED_PIVOT + P.STORE_START;
+    var pegged = Math.round(pivot + P.NEED_WEIGHT * (oldPurse - pivot) + P.MARGIN);
     return Math.max(oldPurse + 1, pegged);
   }
 
-  function createLife(seed, overrides) {
-    var life = newLife(seed, overrides), ref = newLife(seed, overrides);
-    // The old-way reference: house 0 lives the same tape as a plain reciprocator. It fixes the
-    // winter need and is the world the verdict compares against. Draws are keyed, so running
-    // it cannot disturb the real Life.
+  // A place key, an overrides object or nothing, and optional overrides on top: one overrides
+  // object for newLife, and the key to record.
+  function placeOf(place, more) {
+    var key = null, base = null, out = {}, k;
+    if (typeof place === 'string') {
+      need(PLACES.hasOwnProperty(place), 'unknown place "' + place + '"');
+      key = place; base = PLACES[place];
+    } else if (place !== undefined && place !== null) {
+      need(typeof place === 'object', 'createLife: a place is a key of AfterYou.PLACES or an overrides object');
+      base = place;
+    }
+    if (!more) return { key: key, overrides: base };
+    if (base) for (k in base) out[k] = base[k];
+    for (k in more) out[k] = more[k];
+    return { key: key, overrides: out };
+  }
+
+  function createLife(seed, place, more) {
+    var pl = placeOf(place, more);
+    var life = newLife(seed, pl.overrides), ref = newLife(seed, pl.overrides), custom = life.params.CUSTOM;
+    // The old-way reference: house 0 lives the same tape as a plain reciprocator (in a place: as
+    // the place's custom). It fixes the winter need and is the world the verdict compares
+    // against. Draws are keyed, so running it cannot disturb the real Life.
     while (!ref.over) {
       var ch = {};
       for (var i = 0; i < ref.neighbours.length; i++) {
         var L = ref.last[TIE[YOU][ref.neighbours[i]]];
-        ch[ref.neighbours[i]] = OLD_WAY[L ? sitOf(L[0], L[1]) : 0] === 1;
+        ch[ref.neighbours[i]] = custom[L ? sitOf(L[0], L[1]) : 0] === 1;
       }
       playDay(ref, ch);
     }
     life.need = winterNeed(ref.purse, life.params);
     life.old = { purse: ref.purse, end: endState(ref) };
+    if (pl.key !== null) life.place = pl.key;
     return life;
   }
 
@@ -627,6 +936,7 @@
         yesterday: y ? { intended: y.intended, lost: y.lost, arrived: y.arrived, they: y.they, payoff: y.payoff } : null,
         seen: seen, seenFar: far, changedDay: life.changedDay[id], seenSince: since
       });
+      if (life.stock) out[i].stock = life.stock[TIE[YOU][id]];   // a hand arriving today is worth B x this
     }
     var d = Math.min(life.day, DAYS);
     return {
@@ -646,12 +956,25 @@
       need(c === true || c === false, 'playDay needs true or false for neighbour ' + nb[i] + ' (got ' + c + ')');
       send[nb[i]] = c;
     }
+    // REPLAY 'season': the verdict also replays the last season (days REPLAY_FROM..12). Only the
+    // real Life keeps what that needs: the Life as it stood before REPLAY_FROM and each day's choices.
+    if (P.REPLAY === 'season' && life.old) {
+      if (D === seasonFrom(P)) {
+        var keepOld = life.old;
+        life.old = null;
+        life.season = { from: D, before: cloneLife(life), sent: [] };
+        life.old = keepOld;
+      }
+      if (life.season) life.season.sent.push(send);
+    }
     // The verdict can replay the last day. Only the real Life keeps what that needs.
     if (D === DAYS && life.old) {
-      var keep = life.old;
+      var keep = life.old, keepSeason = life.season;
       life.old = null;
+      if (keepSeason) life.season = null;
       life.lastDay = { before: cloneLife(life), sent: send };
       life.old = keep;
+      if (keepSeason) life.season = keepSeason;
     }
 
     function move(x, y, s) {    // house x toward house y, x being in situation s
@@ -669,14 +992,21 @@
     var gain = [0, 0, 0, 0, 0, 0, 0, 0], results = [], kinWith = [], yesterday = {}, last = new Array(NT);
     var seenBefore = {};        // what the player had witnessed before today (the why-records quote it)
     for (i = 0; i < nb.length; i++) seenBefore[nb[i]] = { h: life.seen[nb[i]].h.slice(), n: life.seen[nb[i]].n.slice() };
+    var stock = life.stock || null;
     for (t = 0; t < NT; t++) {
       var a = TIE_A[t], b = TIE_B[t], L = life.last[t];
       var sa = L ? sitOf(L[0], L[1]) : 0, sb = L ? sitOf(L[1], L[0]) : 0;
       var ma = move(a, b, sa), mb = move(b, a, sb);
       var ha = ma.arrived ? 1 : 0, hb = mb.arrived ? 1 : 0;
       last[t] = [ha, hb];
-      gain[a] += P.B * hb - P.C * ha;
-      gain[b] += P.B * ha - P.C * hb;
+      // The stakes (the futures repeat them in simulate): a hand that arrives is worth bt to the
+      // house it reaches (B, or B x the tie's level before today's change) and costs its sender C;
+      // shared is S on a tie-day when both arrived and -H when neither did (0 in the valley).
+      var level = stock ? stock[t] : 1, bt = stock ? P.B * level : P.B;
+      var shared = P.S * (ha & hb) - P.H * (1 - (ha | hb));
+      gain[a] += bt * hb - P.C * ha + shared;
+      gain[b] += bt * ha - P.C * hb + shared;
+      if (stock) stock[t] = stockStep(level, ha + hb, P.STOCK);
       if (a !== YOU) bump(H[a].tally, sa, ma.arrived);
       bump(H[b].tally, sb, mb.arrived);
       var open = VISIBLE[a] && VISIBLE[b], why = null;
@@ -698,16 +1028,19 @@
         var w = life.ways[sa];
         w.n++; if (ma.intended) w.h++;
         w.deeds.push({ day: D, to: b, helped: ma.intended });
-        var pay = P.B * hb - P.C * ha;
+        var pay = bt * hb - P.C * ha + shared;
         results.push({
           id: b, name: H[b].name, kin: b === life.kin, situation: sa,
           intended: ma.intended, lost: ma.lost, arrived: ma.arrived, they: mb.arrived, payoff: pay, why: why
         });
+        if (stock) { results[results.length - 1].stock = level; results[results.length - 1].stockAfter = stock[t]; }
         yesterday[b] = { intended: ma.intended, lost: ma.lost, arrived: ma.arrived, they: mb.arrived, payoff: pay };
       } else if (open && a === life.kin) {
         kinWith.push({ id: b, name: H[b].name, kinSent: ma.arrived, theySent: mb.arrived, why: why });
+        if (stock) { kinWith[kinWith.length - 1].stock = level; kinWith[kinWith.length - 1].stockAfter = stock[t]; }
       } else if (open && b === life.kin) {
         kinWith.push({ id: a, name: H[a].name, kinSent: mb.arrived, theySent: ma.arrived, why: why });
+        if (stock) { kinWith[kinWith.length - 1].stock = level; kinWith[kinWith.length - 1].stockAfter = stock[t]; }
       }
     }
     life.last = last;
@@ -817,8 +1150,9 @@
     for (s = 0; s < 5; s++) {
       var w = life.ways[s];
       h.push(w.h); n.push(w.n); hollow.push(w.n === 0); custom.push(w.n ? w.h / w.n : null);
-      // No precedent, no change: the heir keeps the old family way there, exactly as kin does.
-      heir.push(w.n ? w.h / w.n : OLD_WAY[s]);
+      // No precedent, no change: the heir keeps the old family way there (the place's custom),
+      // exactly as kin does.
+      heir.push(w.n ? w.h / w.n : life.params.CUSTOM[s]);
       fromYou.push(kin.source[s].type === 'you');
     }
     return { custom: custom, hollow: hollow, heir: heir, h: h, n: n,
@@ -827,7 +1161,7 @@
 
   // What a finished Life hands to the Afterwards (house 0's custom is filled in per scenario).
   function endState(life) {
-    return {
+    var end = {
       names: life.houses.map(function (x) { return x.name; }),
       custom: life.houses.map(function (x) { return x.custom ? x.custom.slice() : null; }),
       tallyH: life.houses.map(function (x) { return x.tally.h.slice(); }),
@@ -836,25 +1170,68 @@
       way: life.houses.map(function (x) { return x.way; }),
       seasonPay: life.seasonPay.map(function (p) { return p.slice(); })
     };
+    if (life.stock) end.stock = life.stock.slice();   // the ground as the Life leaves it
+    return end;
   }
 
-  // Day 12 again, with a hand sent to every neighbour the player stayed home against after both
-  // had helped; everything else as it was. Draws are keyed, so nothing unrelated moves.
-  // Returns null when there was no such neighbour.
+  // Day 12 again with some of the player's acts reversed; everything else as it was. Draws are
+  // keyed, so nothing unrelated moves: the neighbours act on day 12 exactly as they did.
+  //   REPLAY 'valley': a hand sent to every neighbour the player stayed home against after both
+  //     had helped.
+  //   REPLAY 'habit' (places): every act that went against the house's own habit in that tie's
+  //     situation as it stood before day 12 is reversed. Its habit there was to send when it had
+  //     sent h of n times with h / n >= 0.5; in a situation never met, the custom's habit. Each of
+  //     the four ties is reported (ties), and the reversed ones again in changed.
+  // Returns null when no act is reversed.
   function replayLastDay(life) {
-    var ld = life.lastDay, i;
+    var ld = life.lastDay, P = life.params, habit = P.REPLAY === 'habit' || P.REPLAY === 'season', i;
     if (!ld) return null;
-    var alt = cloneLife(ld.before), ch = {}, changed = [];
+    var alt = cloneLife(ld.before), ch = {}, changed = [], ties = [];
     for (i = 0; i < alt.neighbours.length; i++) {
-      var id = alt.neighbours[i], L = alt.last[TIE[YOU][id]];
+      var id = alt.neighbours[i], L = alt.last[TIE[YOU][id]], name = alt.houses[id].name;
       ch[id] = ld.sent[id];
-      if (!ch[id] && L && sitOf(L[0], L[1]) === 1) { ch[id] = true; changed.push({ id: id, name: alt.houses[id].name }); }
+      if (habit) {
+        var s = L ? sitOf(L[0], L[1]) : 0, w = alt.ways[s];
+        var favoured = w.n ? 2 * w.h >= w.n : P.CUSTOM[s] === 1, against = ch[id] !== favoured;
+        ties.push({ id: id, name: name, situation: s, lived: ch[id], replayed: favoured, against: against });
+        if (against) { changed.push({ id: id, name: name, situation: s, lived: ch[id], replayed: favoured, h: w.h, n: w.n }); ch[id] = favoured; }
+      } else if (!ch[id] && L && sitOf(L[0], L[1]) === 1) { ch[id] = true; changed.push({ id: id, name: name }); }
     }
     if (!changed.length) return null;
     alt.old = life.old;
     alt.need = life.need;
     playDay(alt, ch);
-    return { life: alt, changed: changed };
+    return habit ? { life: alt, changed: changed, rule: 'habit', ties: ties } : { life: alt, changed: changed };
+  }
+
+  // REPLAY 'season' only. The first day of the season replay.
+  function seasonFrom(P) { return P.REPLAY_FROM !== undefined ? P.REPLAY_FROM : DAYS - SEASON + 1; }
+  // The last season again (days `from`..12), the house playing on every tie its habit as it stood
+  // before `from` (sent h of n there with h / n >= 0.5 means send; a situation never met means the
+  // custom's habit), in the situation the replay is in. Days 1..from-1 are as lived; draws are keyed,
+  // so the neighbours act as they would have. A precedent written in the last season, after the
+  // sister last learned from the house in a season she could act on it, is thus never tested in the
+  // Life; this replay is what the seal compares it with. changed lists every act that differs from
+  // what was lived on that day. Returns null when none does (the replay is the Life itself).
+  function replaySeason(life) {
+    var se = life.season, P = life.params, s, i;
+    if (!se) return null;
+    var alt = cloneLife(se.before), hb = [];
+    for (s = 0; s < 5; s++) { var w = alt.ways[s]; hb.push(w.n ? 2 * w.h >= w.n : P.CUSTOM[s] === 1); }
+    var changed = [];
+    while (!alt.over) {
+      var D = alt.day, lived = se.sent[D - se.from], ch = {};
+      for (i = 0; i < alt.neighbours.length; i++) {
+        var id = alt.neighbours[i], L = alt.last[TIE[YOU][id]], sit = L ? sitOf(L[0], L[1]) : 0;
+        ch[id] = hb[sit];
+        if (ch[id] !== lived[id]) changed.push({ day: D, id: id, name: alt.houses[id].name, situation: sit, lived: lived[id], replayed: ch[id] });
+      }
+      playDay(alt, ch);
+    }
+    if (!changed.length) return null;
+    alt.old = life.old;
+    alt.need = life.need;
+    return { life: alt, changed: changed, from: se.from, habit: hb };
   }
 
   // ---- the Afterwards -----------------------------------------------------------------------
@@ -885,6 +1262,7 @@
       sc.tn[i * 5 + s] = end.tallyN[i][s];
     }
     for (t = 0; t < NT; t++) { sc.la[t] = end.last[t] ? end.last[t][0] : -1; sc.lb[t] = end.last[t] ? end.last[t][1] : -1; }
+    if (end.stock) sc.stock = Float64Array.from(end.stock);   // the tie levels the futures start from
     // "Payoff over the last 3 seasons" reaches back into the Life until the Afterwards has
     // three seasons of its own: slot k holds Life season k + 1 and is overwritten in turn.
     for (t = 0; t < end.seasonPay.length && t < 3; t++) for (i = 0; i < N; i++) sc.hist[t * N + i] = end.seasonPay[t][i];
@@ -893,7 +1271,7 @@
     if (spec.custom) {
       for (s = 0; s < 5; s++) { sc.cust[s] = spec.custom[s]; sc.cust[kin * 5 + s] = spec.custom[s]; sc.th[kin * 5 + s] = 0; sc.tn[kin * 5 + s] = 0; }
     } else if (old) {
-      for (s = 0; s < 5; s++) sc.cust[s] = OLD_WAY[s];
+      for (s = 0; s < 5; s++) sc.cust[s] = life.params.CUSTOM[s];
     } else {
       var lg = legacy(life);
       for (s = 0; s < 5; s++) sc.cust[s] = lg.heir[s];
@@ -913,7 +1291,7 @@
       la: new Int8Array(NT), lb: new Int8Array(NT), pay: new Float64Array(N),
       hist: new Float64Array(3 * N), flow: new Float64Array(AFTER_SEASONS), way: new Int32Array(N),
       pick: new Float64Array(N), tmp: new Float64Array(N * 5), who: new Int32Array(N),
-      from: new Int32Array(N), wayNext: new Int32Array(N)
+      from: new Int32Array(N), wayNext: new Int32Array(N), stock: new Float64Array(NT)
     };
   }
 
@@ -922,18 +1300,23 @@
   function simulate(sc, f, P, W, rec) {
     var cust = W.cust, th = W.th, tn = W.tn, la = W.la, lb = W.lb, pay = W.pay, hist = W.hist,
         flow = W.flow, way = W.way, pick = W.pick, tmp = W.tmp, who = W.who, from = W.from,
-        wayNext = W.wayNext;
+        wayNext = W.wayNext, stk = W.stock;
     var seed = sc.seed, FOG = P.FOG, B = P.B, C = P.C, K = P.K, MUT = P.MUT;
+    // The place's stakes and flow (read once). SH: whether S or H is in play at all; FK: what the
+    // flow counts (FLOW_CODE); ST: the stock, or null.
+    var S = P.S, H = P.H, SH = S !== 0 || H !== 0, ST = P.STOCK, FK = FLOW_CODE[P.FLOW_KIND];
     var R, tr = api.trace;
-    var i, s, d, t, r, q, a, b, x, y, sa, sb, ia, ib, pa, pb, ka, kb, ha, hb, u, v, m;
+    var i, s, d, t, r, q, a, b, x, y, sa, sb, ia, ib, pa, pb, ka, kb, ha, hb, u, v, m, bt, shared, lv, counted;
     cust.set(sc.cust); th.set(sc.th); tn.set(sc.tn); la.set(sc.la); lb.set(sc.lb); hist.set(sc.hist);
+    if (ST) stk.set(sc.stock);
     for (i = 0; i < N; i++) way[i] = sc.way[i];
     if (rec) rec.heir = Array.prototype.slice.call(cust, 0, 5);
 
     var pAct = prefix(seed, P_ACT, f), pFord = prefix(seed, P_FORD, f), pPick = prefix(seed, P_PICK, f),
         pModel = prefix(seed, P_MODEL, f), pAdopt = prefix(seed, P_ADOPT, f), pMut = prefix(seed, P_MUT, f);
     var arriveAt = P.ARRIVE_FROM + Math.floor(draw(seed, P_ARRIVE, 0, 0, 0, f) * (P.ARRIVE_TO - P.ARRIVE_FROM + 1));
-    var denom = NT * 2 * SEASON * (1 - FOG);
+    var denom = NT * 2 * SEASON * (1 - FOG);              // 'hands': hands expected to arrive in a season
+    var tieDays = NT * SEASON * (FK === FLOW_CODE.stock ? ST.start : 1);   // the other kinds: per tie-day
     var names = rec ? sc.names.slice() : null, purse = rec ? [0, 0, 0, 0, 0, 0, 0, 0] : null, events, sent, drift;
     var kinLine = true, newName = null;     // rec only: kin's family still holds its house
     function yours(w) { return w === YOU || w === sc.kin; }
@@ -960,12 +1343,14 @@
         }
         cust[q] = 0; cust[q + 1] = x; cust[q + 2] = 0; cust[q + 3] = x; cust[q + 4] = 0;
         for (i = 0; i < 5; i++) { th[q + i] = 0; tn[q + i] = 0; }
+        // Its four ties start afresh ("meeting someone new"); their levels stay as they are (the
+        // level belongs to the ground, not to the family that left).
         for (i = 0; i < 4; i++) { t = TIE[poorest][NBR[poorest][i]]; la[t] = -1; lb[t] = -1; }
         way[poorest] = NEWCOMER;
       }
 
       for (i = 0; i < N; i++) pay[i] = 0;
-      var helps = 0;
+      counted = 0;               // what this place's flow counts, summed over the season
       for (d = 1; d <= SEASON; d++) {
         var day = DAYS + (s - 1) * SEASON + d, kd = day << 8;
         for (t = 0; t < NT; t++) {
@@ -982,13 +1367,22 @@
           }
           if (hb === 1) { u = fin(mix(pFord, kb)); if (tr) tr(P_FORD, day, b, a, f, u); if (u < FOG) hb = 0; }
           tn[ia]++; th[ia] += ha; tn[ib]++; th[ib] += hb;
-          pay[a] += B * hb - C * ha; pay[b] += B * ha - C * hb;
-          helps += ha + hb;
+          // The stakes, as in playDay. In the valley bt = B and shared = 0, exactly.
+          bt = ST ? B * stk[t] : B;
+          shared = SH ? S * (ha & hb) - H * (1 - (ha | hb)) : 0;
+          pay[a] += bt * hb - C * ha + shared; pay[b] += bt * ha - C * hb + shared;
+          // Each flow kind counts only what it needs.
+          if (FK === 0) counted += ha + hb; else if (FK === 1) counted += ha ^ hb; else if (FK === 2) counted += ha & hb;
+          if (ST) {
+            lv = stk[t] + ST.delta[ha + hb];
+            stk[t] = lv < ST.min ? ST.min : lv > ST.max ? ST.max : lv;
+            if (FK === 3) counted += stk[t];
+          }
           la[t] = ha; lb[t] = hb;
           if (rec) { sent[a] += ha; sent[b] += hb; }
         }
       }
-      flow[s - 1] = helps / denom;
+      flow[s - 1] = FK === 0 ? counted / denom : counted / tieDays;
       q = ((s - 1) % 3) * N;
       for (i = 0; i < N; i++) hist[q + i] = pay[i];
 
@@ -1032,6 +1426,7 @@
           if (yours(way[i])) rec.yourWaysLastSeason = s;
         }
         rec.seasons.push({ season: s, flow: flow[s - 1], houses: hs, events: events });
+        if (ST) rec.seasons[s - 1].ties = Array.prototype.slice.call(stk);   // levels at the season's end
       }
       // Adoptions take effect together, each from what stood at the season's end.
       for (r = 0; r < R; r++) {
@@ -1089,7 +1484,7 @@
     while (run.next < run.n && did < count) {
       simulate(run.sc, run.from + run.next + 1, P, W, null);   // draws of future i use index i + 1; 0 is the Life
       var late = lateFlowOf(W.flow);
-      var held = late >= P.HOLD_LINE;
+      var held = heldBy(late, P);    // the charter's good outcome (in the valley: late >= HOLD_LINE)
       if (held) run.holds++;
       run.held.push(held);
       run.late += late; run.mean += meanFlowOf(W.flow); run.worst.push(worstStretchOf(W.flow)); run.lates.push(late);
@@ -1117,7 +1512,10 @@
              se: 100 * Math.sqrt(Math.max(vr, 0) / m) };
   }
 
+  // 'holds' / 'frays' / 'fails', facing the charter: under 'breaks' a late flow well below the
+  // line is the town's good outcome ('holds') and one well above it is 'fails'.
   function levelOf(late, P) {
+    if (P.CHARTER === 'breaks') return late < P.HOLD_LINE - NEAR_LINE ? 'holds' : late >= P.HOLD_LINE + NEAR_LINE ? 'fails' : 'frays';
     return late >= P.HOLD_LINE + NEAR_LINE ? 'holds' : late < P.HOLD_LINE - NEAR_LINE ? 'fails' : 'frays';
   }
 
@@ -1128,7 +1526,7 @@
     simulate(sc, index + 1, life.params, W, rec);
     var late = lateFlowOf(W.flow);
     return {
-      index: index, holds: late >= life.params.HOLD_LINE, lateFlow: late, meanFlow: meanFlowOf(W.flow),
+      index: index, holds: heldBy(late, life.params), lateFlow: late, meanFlow: meanFlowOf(W.flow),
       level: levelOf(late, life.params),
       worstStretch: worstStretchOf(W.flow), heir: rec.heir, arrival: rec.arrival,
       yourWaysLastSeason: rec.yourWaysLastSeason, yourWaysAtEnd: rec.yourWaysAtEnd,
@@ -1143,6 +1541,11 @@
       var re = replayLastDay(life);
       if (!re) return null;
       from = re.life;
+    }
+    if (options.season) {           // REPLAY 'season' only: the replayed last season
+      var rs = replaySeason(life);
+      if (!rs) return null;
+      from = rs.life;
     }
     var run = newRun(scenario(from, options), options.futures || life.params.FUTURES, options.from);
     stepRun(run, life.params, scratch(), Infinity);
@@ -1159,15 +1562,15 @@
     var m = Math.min(n, options.whatIfFutures || P.WHATIF_FUTURES), lg = legacy(life), s, k;
     var job = {
       life: life, n: n, m: m, W: scratch(), runs: [], refs: [], whatIfs: [], lastDay: null, replayed: options.lastDay !== false,
-      at: 0, did: 0, total: 0,
+      at: 0, did: 0, total: 0, rangeWays: rangeWaysOf(P),
       futures: n, futuresDone: 0, done: false, progress: 0, headline: null, result: null
     };
     job.runs.push(newRun(scenario(life, {}), n));
     job.runs.push(newRun(scenario(life, { history: 'old' }), n));
     if (options.range !== false) {
-      for (k = 0; k < RANGE_WAYS.length; k++) {
+      for (k = 0; k < job.rangeWays.length; k++) {
         job.refs.push(job.runs.length);
-        job.runs.push(newRun(scenario(life, { custom: RANGE_WAYS[k] }), m));
+        job.runs.push(newRun(scenario(life, { custom: job.rangeWays[k] }), m));
       }
     }
     if (options.whatIfs !== false) {
@@ -1186,7 +1589,15 @@
       var re = replayLastDay(life);
       if (re) {
         job.lastDay = { run: job.runs.length, changed: re.changed, purse: re.life.purse, houseKept: re.life.purse >= life.need };
+        if (re.rule) { job.lastDay.rule = re.rule; job.lastDay.ties = re.ties; }
         job.runs.push(newRun(scenario(re.life, {}), m));
+      }
+      if (P.REPLAY === 'season') {
+        var rs = replaySeason(life);
+        if (rs) {
+          job.season = { run: job.runs.length, from: rs.from, changed: rs.changed, purse: rs.life.purse, houseKept: rs.life.purse >= life.need };
+          job.runs.push(newRun(scenario(rs.life, {}), m));
+        }
       }
     }
     for (k = 0; k < job.runs.length; k++) job.total += job.runs[k].n;
@@ -1217,7 +1628,7 @@
         var pcts = job.refs.map(function (r, k) {
           var p = runStats(job.runs[r]).holdsPct;
           if (p > yourPct) above++;
-          if (sameCustom(RANGE_WAYS[k], OLD_WAY)) oldHere = p;
+          if (sameCustom(job.rangeWays[k], P.CUSTOM)) oldHere = p;
           return p;
         });
         var hi = Math.max.apply(null, pcts), lo = Math.min.apply(null, pcts);
@@ -1241,7 +1652,13 @@
         var pl = paired(job.runs[job.lastDay.run].held, you, m);
         res.lastDay = { kind: 'lastDay', changed: job.lastDay.changed, purse: job.lastDay.purse, houseKept: job.lastDay.houseKept,
                         holds: pl.aHolds, holdsPct: pl.aPct, futures: m, delta: pl.delta, se: pl.se };
+        if (job.lastDay.rule) { res.lastDay.rule = job.lastDay.rule; res.lastDay.ties = job.lastDay.ties; }
         consider(res.lastDay, CLEAR_Z_ONE);
+      }
+      if (job.season) {
+        var ps = paired(job.runs[job.season.run].held, you, m);
+        res.season = { kind: 'season', from: job.season.from, changed: job.season.changed, purse: job.season.purse, houseKept: job.season.houseKept,
+                       holds: ps.aHolds, holdsPct: ps.aPct, futures: m, delta: ps.delta, se: ps.se };
       }
       res.mattered = best;
       if (job.replayed) {
@@ -1249,9 +1666,25 @@
         // count, and the house not kept by what was taken on the last day.
         var bought = !!(res.houseKept && res.lastDay && !res.lastDay.houseKept);
         var cost = !!(res.lastDay && res.lastDay.clear && res.lastDay.delta > 0);
-        var markClear = res.mark - SEAL_Z * res.markSE >= SEAL_MARK;
+        var sealMark = P.SEAL_MARK !== undefined ? P.SEAL_MARK : SEAL_MARK;
+        var markClear = res.mark - SEAL_Z * res.markSE >= sealMark;
         res.seal = { earned: res.houseKept && markClear && !bought && !cost, houseKept: res.houseKept, markClear: markClear,
                      boughtOnLastDay: bought, lastDayCost: cost };
+        if (P.REPLAY === 'habit' || P.REPLAY === 'season') {
+          // Places: nor may the mark be clear only by what the house did against its own habit on
+          // the last day (delta is what reversing those acts is worth to the charter).
+          var won = !!(res.lastDay && markClear && res.mark + res.lastDay.delta - SEAL_Z * res.markSE < sealMark);
+          res.seal.earned = res.seal.earned && !won;
+          res.seal.wonOnLastDay = won;
+        }
+        if (P.REPLAY === 'season') {
+          // Nor only by a precedent written in the last season: with days REPLAY_FROM..12 played by
+          // the habit the house had before them, the mark must still clear. (The season replay is
+          // a check on the seal only; it is never what mattered.)
+          var wonS = !!(res.season && markClear && res.mark + res.season.delta - SEAL_Z * res.markSE < sealMark);
+          res.seal.earned = res.seal.earned && !wonS;
+          res.seal.wonOnSeason = wonS;
+        }
       }
       job.result = res;
       job.done = true;
@@ -1286,8 +1719,11 @@
   var api = {
     params: PARAMS, SITUATIONS: SITUATIONS, REFERENCE_WAYS: REFERENCE_WAYS, RANGE_WAYS: RANGE_WAYS, trace: null,
     PURPOSES: { ACT: P_ACT, FORD: P_FORD, PICK: P_PICK, MODEL: P_MODEL, ADOPT: P_ADOPT, MUT: P_MUT },
+    PLACES: PLACES, PLACE_ORDER: PLACE_ORDER,
+    tieList: TIE_A.map(function (a, t) { return [a, TIE_B[t]]; }),
+    rangeWays: function (life) { return rangeWaysOf(life.params || life).map(function (w) { return w.slice(); }); },
     createLife: createLife, cloneLife: cloneLife, today: today, playDay: playDay, ways: ways,
-    legacy: legacy, runFuture: runFuture, project: project, verdict: verdict,
+    legacy: legacy, runFuture: runFuture, project: project, verdict: verdict, replaySeason: replaySeason,
     verdictJob: verdictJob, verdictStep: verdictStep, draw: draw
   };
   root.AfterYou = api;

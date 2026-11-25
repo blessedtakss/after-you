@@ -50,6 +50,84 @@
   --yours: #F0C35B; --yours-fill: #F0C35B; --yours-wash: #453B1F;
   color-scheme: dark;
 }
+/* The Banks (app.js marks the place in hand on the root, data-place): a chart of the cove. Kelp
+   green for a boat keeping to its water and a future held, sea blue for the water, the tide race
+   and the banks' gauges, hull red for the boats and their catch. Each pair the page draws with is
+   at least as far apart as the valley's (page-smoke.js measures it). */
+:root[data-place="banks"] {
+  --field: #1D6E5E; --field-wash: #DAEDE8;
+  --river: #1C5F8E; --river-wash: #C9DFEE;
+  --madder: #9C3A2C;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-place="banks"]:not([data-theme="light"]) {
+    --field: #74CDB4; --field-wash: #1A3B36;
+    --river: #78BEEB; --river-wash: #1C4262;
+    --madder: #EE9A84;
+  }
+}
+:root[data-place="banks"][data-theme="dark"] {
+  --field: #74CDB4; --field-wash: #1A3B36;
+  --river: #78BEEB; --river-wash: #1C4262;
+  --madder: #EE9A84;
+}
+/* The Watch: a border of towers. Olive for a tower that stands down and a future at peace, slate
+   blue for the border line and its posts, beacon red for the towers and their stores. */
+:root[data-place="watch"] {
+  --field: #33652A; --field-wash: #E0EBD5;
+  --river: #3A538F; --river-wash: #CCD6EC;
+  --madder: #A2361C;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-place="watch"]:not([data-theme="light"]) {
+    --field: #9DD08A; --field-wash: #263B21;
+    --river: #9AB3EE; --river-wash: #2C4677;
+    --madder: #F29A78;
+  }
+}
+:root[data-place="watch"][data-theme="dark"] {
+  --field: #9DD08A; --field-wash: #263B21;
+  --river: #9AB3EE; --river-wash: #2C4677;
+  --madder: #F29A78;
+}
+/* The Bridges: carters at narrow bridges. Sage for a carter who gives way and a road that moves,
+   stream blue for the stream and its bridges, wagon brown for the yards and their loads. */
+:root[data-place="bridges"] {
+  --field: #2C6655; --field-wash: #D8EAE3;
+  --river: #245F86; --river-wash: #C8DDEC;
+  --madder: #8E4519;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-place="bridges"]:not([data-theme="light"]) {
+    --field: #86CDB3; --field-wash: #1C3B33;
+    --river: #7DBDE6; --river-wash: #1B3D57;
+    --madder: #EDA477;
+  }
+}
+:root[data-place="bridges"][data-theme="dark"] {
+  --field: #86CDB3; --field-wash: #1C3B33;
+  --river: #7DBDE6; --river-wash: #1B3D57;
+  --madder: #EDA477;
+}
+/* The Saltmarket: a ring of salt stalls. Sea green for a price held and a future the town is
+   better off in, slate for the lane and its cross, crimson for the stalls and their takings. */
+:root[data-place="saltmarket"] {
+  --field: #22676B; --field-wash: #D5EAEA;
+  --river: #4A528A; --river-wash: #D0D3EC;
+  --madder: #9A2D48;
+}
+@media (prefers-color-scheme: dark) {
+  :root[data-place="saltmarket"]:not([data-theme="light"]) {
+    --field: #7FD0D2; --field-wash: #183C3E;
+    --river: #A9B2EC; --river-wash: #383F7C;
+    --madder: #F493AA;
+  }
+}
+:root[data-place="saltmarket"][data-theme="dark"] {
+  --field: #7FD0D2; --field-wash: #183C3E;
+  --river: #A9B2EC; --river-wash: #383F7C;
+  --madder: #F493AA;
+}
 
 *, *::before, *::after { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -171,6 +249,50 @@ h2:focus-visible, h1:focus-visible, h3:focus-visible, h4:focus-visible { outline
 .m-hold.is-yours .m-house, .m-hold.is-new .m-house { visibility: hidden; }
 .m-hold.is-new:not(.is-yours) .m-tent { visibility: visible; }
 .m-name, .m-sub, .m-num, .m-note, .m-hand, .m-hand-head, .m-lost, .m-lost-x, .m-north, .m-north-head, .m-plan, .m-plan-tip, .m-stay, .m-ford { pointer-events: none; }
+/* the coast (a place's sheet: the Banks): the tide race, the headland's shore, a boat at its mooring */
+.m-race { fill: none; stroke: var(--river); stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; }
+.m-race.is-far { stroke-opacity: 0.6; }
+.m-shore { fill: none; stroke: var(--ink-soft); stroke-width: 1.3; stroke-linejoin: round; }
+.m-stipple { fill: var(--ink-soft); stroke: none; }
+.m-wave { fill: none; stroke: var(--field); stroke-width: 0.7; stroke-opacity: 0.7; }
+.m-hull { fill: var(--ink-soft); stroke: none; }
+.m-mast { fill: none; stroke: var(--ink); stroke-width: 0.9; }
+.m-sail { fill: var(--paper-raised); stroke: var(--ink-soft); stroke-width: 0.8; stroke-linejoin: round; }
+/* a stock on a tie, as a dial: the wedges filled as far as the level, cut apart by spokes (form, not colour) */
+.m-gauge-disc { fill: var(--paper-raised); stroke: var(--river); stroke-width: 1.2; }
+.m-gauge-fill { fill: var(--river); stroke: none; }
+.m-gauge-spoke { fill: none; stroke: var(--paper-raised); stroke-width: 0.7; }
+.m-gauge { pointer-events: none; }
+/* the border (the Watch): a pale band with the boundary's dash and dot, a post where each of your roads
+   crosses it, a watchtower in each holding */
+.m-border-wash { fill: none; stroke: var(--river-wash); stroke-linecap: round; stroke-linejoin: round; }
+.m-border { fill: none; stroke: var(--river); stroke-width: 1.5; stroke-dasharray: 8 3 1.6 3; stroke-linejoin: round; }
+.m-post { fill: var(--paper-raised); stroke: var(--river); stroke-width: 1.4; }
+.m-tower { fill: var(--paper-raised); stroke: var(--ink-soft); stroke-width: 0.9; stroke-linejoin: round; }
+.m-slit { fill: none; stroke: var(--ink-soft); stroke-width: 1; }
+.m-ground { fill: none; stroke: var(--field); stroke-width: 0.8; stroke-opacity: 0.75; }
+/* the roads (the Bridges): the stream with a bridge laid along each of your roads, rolling downs, a cart in each yard */
+.m-bridge { fill: var(--paper-raised); stroke: none; }
+.m-parapet { fill: none; stroke: var(--ink); stroke-width: 1.2; stroke-linecap: round; }
+.m-crest { fill: none; stroke: var(--ink-soft); stroke-width: 0.8; }
+.m-cart { fill: var(--paper-raised); stroke: var(--ink-soft); stroke-width: 0.9; }
+/* the Bridges: a season's number lettered over a cart's bed keeps a wider halo, so that a minus sign is not read
+   between the bed's edges ("=32" for "−32") */
+:root[data-place="bridges"] #map-after .m-num { stroke-width: 6px; }
+.m-wheel { fill: var(--paper-raised); stroke: var(--ink); stroke-width: 0.9; }
+.m-shaft { fill: none; stroke: var(--ink-soft); stroke-width: 0.9; stroke-linecap: round; }
+/* the market (the Saltmarket): the lane and its cross, the arcade round the square, a stall in each place */
+.m-lane { fill: none; stroke: var(--paper-sunk); stroke-linejoin: round; }
+.m-lane-edge { fill: none; stroke: var(--ink-soft); stroke-width: 0.9; stroke-linejoin: round; }
+.m-arch { fill: none; stroke: var(--ink-soft); stroke-width: 0.8; }
+.m-mcross { fill: var(--paper-raised); stroke: var(--river); stroke-width: 1.3; }
+.m-mcross-bar { fill: none; stroke: var(--river); stroke-width: 1.2; }
+.m-awning { fill: var(--paper-raised); stroke: var(--ink-soft); stroke-width: 0.9; stroke-linejoin: round; }
+.m-stripe { fill: none; stroke: var(--madder); stroke-width: 1.1; }
+.m-pole { fill: none; stroke: var(--ink-soft); stroke-width: 0.8; }
+.m-counter { fill: var(--paper-raised); stroke: var(--ink-soft); stroke-width: 0.9; }
+.m-salt { fill: var(--paper-raised); stroke: var(--ink-soft); stroke-width: 0.8; stroke-linejoin: round; }
+.m-post, .m-bridge, .m-parapet, .m-mcross, .m-mcross-bar { pointer-events: none; }
 
 .legend { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; font-size: var(--t-xs); line-height: 1.35; color: var(--ink-soft); }
 .legend-item { display: inline-flex; align-items: center; gap: 0.4rem; min-width: 0; }
@@ -187,6 +309,9 @@ h2:focus-visible, h1:focus-visible, h3:focus-visible, h4:focus-visible { outline
 .key-tie { fill: none; stroke: var(--ink-soft); stroke-width: 1; stroke-dasharray: 3.5 2.5; }
 .key-open { fill: var(--paper-raised); stroke: var(--ink); stroke-width: 1.5; }
 .key-river { fill: none; stroke: var(--river); stroke-width: 1.4; }
+.key-border { fill: none; stroke: var(--river); stroke-width: 1.4; stroke-dasharray: 4 1.6 1.2 1.6; }
+.key-lane { fill: none; stroke: var(--ink-soft); stroke-width: 1.1; }
+.key-bridge { fill: none; stroke: var(--ink); stroke-width: 1.1; stroke-linecap: round; }
 .key-yours { fill: none; stroke: var(--yours); stroke-width: 2.2; }
 .key-diamond { fill: var(--yours-fill); stroke: var(--yours); stroke-width: 1.1; }
 .key-parcel { fill: var(--paper-raised); stroke: var(--field); stroke-width: 1.1; }
@@ -207,6 +332,20 @@ h2:focus-visible, h1:focus-visible, h3:focus-visible, h4:focus-visible { outline
 .stakes li { padding-left: 1.1rem; position: relative; }
 .stakes li::before { content: ""; position: absolute; left: 0; top: 0.72em; width: 0.5rem; border-top: 1.5px solid var(--ink-soft); }
 .sheet-no { font: 400 var(--t-s)/1.3 var(--font-text); letter-spacing: 0.06em; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.sheet-no.is-held { visibility: hidden; }
+/* until app.js has put a place in hand (it marks the root), the Opening is not shown: a link to another place
+   never shows the valley's copy at rest first, and the choice of places never arrives above a premise in view */
+:root:not([data-place]) .opening { visibility: hidden; }      /* a place just chosen: the number line keeps its room, so nothing above the choice moves */
+/* the places: one radio group in the cards' option style (.opt), shown when there are two or more */
+.places { border: 0; min-width: 0; justify-self: stretch; max-width: 34rem; }
+.places-row { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.opt.is-place input:checked + .opt-face { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+/* each place's option is as wide as its name on one line, with the check's room kept whether or not
+   it is chosen, so that choosing one moves nothing; set a size smaller than the cards' options, so that
+   the five places stand in one row in the Opening's text column on a laptop (448px at 1280x800) */
+.opt.is-place .opt-face { padding-inline: 0.55rem; gap: 0.3rem; white-space: nowrap; font-size: var(--t-xs); }
+.opt.is-place .opt-check { display: block; visibility: hidden; }
+.opt.is-place input:checked + .opt-face .opt-check { visibility: visible; }
 @media (min-width: 60rem) {
   .opening { grid-template-columns: minmax(0, 28rem) minmax(0, 1fr); padding-block: 1rem; align-items: start; }
 }
@@ -245,6 +384,9 @@ h2:focus-visible, h1:focus-visible, h3:focus-visible, h4:focus-visible { outline
 .meter { position: relative; margin: 0.45rem 0 0.4rem; height: 1.5rem; max-width: 34rem; }
 .meter-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 0.8rem; border: 1.5px solid var(--ink); background: var(--paper-raised); }
 .meter-fill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--madder); }
+/* a store below zero: drawn hatched from the zero mark leftward (form, not colour) */
+.meter-fill.is-below { background: repeating-linear-gradient(135deg, var(--madder) 0 2px, transparent 2px 5px); }
+.meter-zero { position: absolute; top: -0.25rem; bottom: -0.25rem; width: 0; border-left: 2px solid var(--ink); }
 .meter-ten { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px solid var(--paper-raised); }
 .meter-ten.is-beyond { border-left-color: var(--rule); }
 .meter-need { position: absolute; bottom: 0; height: 1.5rem; width: 0; border-left: 2px solid var(--ink); }
@@ -274,6 +416,11 @@ h2:focus-visible, h1:focus-visible, h3:focus-visible, h4:focus-visible { outline
 .ford-note { order: 7; }
 .status { font: 400 var(--t-l)/1.3 var(--font-display); font-variant-numeric: tabular-nums; min-height: 1.5rem; scroll-margin-top: 0.75rem; }
 .status.is-total { font-weight: 700; }
+/* what the town paid for the ring today (an inverted charter: the Saltmarket), with the day's total */
+.status-town { font: 400 var(--t-m)/1.3 var(--font-text); color: var(--ink-soft); }
+/* the Saltmarket: the town's line on a line of its own under the total, at the cards' small size, so that the
+   status is no taller than the row of the day's button beside it */
+:root[data-place="saltmarket"] .status-town { display: block; font-size: var(--t-s); line-height: 1rem; }
 .day-actions .btn { width: 100%; }
 @media (min-width: 62rem) {
   .day-grid { display: grid; grid-template-columns: minmax(0, 0.84fr) minmax(0, 1.16fr); gap: 1rem 1.75rem; align-items: start; }
@@ -362,6 +509,10 @@ h2:focus-visible, h1:focus-visible, h3:focus-visible, h4:focus-visible { outline
 .card-title { font: 700 var(--t-l)/1.2 var(--font-display); }
 .card-sub { font: italic 400 var(--t-s)/1.25 var(--font-display); color: var(--ink-soft); }
 .bearing { flex: none; font: 600 var(--t-xs)/1 var(--font-text); letter-spacing: 0.06em; color: var(--ink-soft); border: 1px solid var(--rule); border-radius: 50%; width: 1.75rem; height: 1.75rem; display: grid; place-items: center; }
+/* a place with a stock: the bank between you, beside the bearing, its gauge over a short caption */
+.bank { flex: none; display: grid; justify-items: center; gap: 0.1rem; min-width: 2.6rem; }
+.bank-gauge svg { display: block; }
+.bank-text { font: 600 var(--t-xs)/1.1 var(--font-text); color: var(--ink-soft); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .card-yesterday { font-size: var(--t-s); line-height: 1.4; }
 .card-way { font-size: var(--t-xs); line-height: 1.35; color: var(--yours); }
 
@@ -507,6 +658,12 @@ h2:focus-visible, h1:focus-visible, h3:focus-visible, h4:focus-visible { outline
   .card-face { padding-block: 0.5rem 0.45rem; }
   .elsewhere { margin-top: 0.6rem; }
   .ford-note { margin-top: 0.5rem; }
+  /* a Why? under "Elsewhere today" stands at the height of its line, so that two of them with a changed
+     way and a two-line luck note still end above the foot of the window (in every place: the valley's
+     published sheet passed it by up to 20px on a few closed days) */
+  .else-line .why-btn { min-height: 0; padding-block: 0.12rem; }
+  /* and the luck note (no longer than a line of the cards' width there) runs the cards' width, one line */
+  .ford-note { max-width: none; }
 }
 
 /* ---- leaving ---- */
@@ -543,7 +700,7 @@ h2:focus-visible, h1:focus-visible, h3:focus-visible, h4:focus-visible { outline
 .flow-col { position: relative; height: 100%; min-width: 0; }
 .flow-col.is-late { background: var(--paper-sunk); }
 .flow-col i { position: absolute; left: 19%; right: 19%; bottom: 0; height: 0; border: 1px solid var(--field); border-bottom: 0; background: var(--field); transition: height 0.35s ease; }
-.flow-col.is-under i { background: none; }
+.flow-col.is-under i, .flow-col.is-over i { background: none; }   /* a season on the place's worse side of the line */
 .flow-col.is-waiting i { border-color: transparent; }
 .flow-half { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed var(--ink); pointer-events: none; }
 .flow-half span { position: absolute; right: 100%; top: 0; margin-right: 0.35rem; transform: translateY(-50%); white-space: nowrap; font: 600 var(--t-xs)/1 var(--font-text); color: var(--ink); }
@@ -553,6 +710,9 @@ h2:focus-visible, h1:focus-visible, h3:focus-visible, h4:focus-visible { outline
 .flow-rule { margin-left: 2.25rem; }
 .ticker { display: grid; gap: 0.35rem; align-content: start; font-size: var(--t-m); max-height: 21rem; overflow-y: auto; padding-right: 0.25rem; min-height: 3rem; }
 .ticker.is-done { max-height: none; overflow-y: visible; }   /* at rest the whole list shows */
+/* the four new places tell many more changes of way (the Bridges look round four times a season): at rest
+   their list stays a scroll box, at its newest lines, so that the strip, the map and the end stay in sight */
+:root:not([data-place="valley"]) .ticker.is-done { max-height: 21rem; overflow-y: auto; }
 .ticker li { padding-left: 1rem; position: relative; }
 .ticker li::before { content: ""; position: absolute; left: 0; top: 0.72em; width: 0.5rem; border-top: 1.5px solid var(--ink-soft); }
 .ticker li.is-yours { color: var(--yours); }
@@ -568,6 +728,7 @@ h2:focus-visible, h1:focus-visible, h3:focus-visible, h4:focus-visible { outline
    it ends above the foot of the window with the strip over it */
 @media (min-width: 62rem) and (max-height: 47.99rem) {
   .ticker { max-height: 16rem; }
+  :root:not([data-place="valley"]) .ticker.is-done { max-height: 16rem; }
 }
 
 /* ---- the Chronicle ---- */
@@ -576,6 +737,7 @@ h2:focus-visible, h1:focus-visible, h3:focus-visible, h4:focus-visible { outline
 .chron-main, .chron-side { min-width: 0; display: grid; gap: 1.75rem; align-content: start; }
 .chron-block { display: grid; gap: 0.5rem; min-width: 0; }
 .chron-block p { max-width: 65ch; }
+.afterword p { font: italic 400 var(--t-l)/1.4 var(--font-display); }
 .chron-figure { font: 700 var(--t-xl)/1.25 var(--font-display); font-variant-numeric: tabular-nums; }
 .mark-line { font: 700 var(--t-xxl)/1.1 var(--font-display); font-variant-numeric: tabular-nums; }
 .rows { display: grid; gap: 0.6rem; margin-top: 0.4rem; }
@@ -618,12 +780,24 @@ h2:focus-visible, h1:focus-visible, h3:focus-visible, h4:focus-visible { outline
 .seal-parcel { fill: var(--field-wash); stroke: var(--field); stroke-width: 1.3; }
 .seal-house { fill: var(--madder); stroke: none; }
 .seal-check { fill: none; stroke: var(--field); stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.seal-hull { fill: var(--madder); stroke: none; }
+.seal-sail { fill: var(--field-wash); stroke: var(--field); stroke-width: 1.3; stroke-linejoin: round; }
+.seal-mast { fill: none; stroke: var(--ink-soft); stroke-width: 1.3; }
+.seal-water { fill: none; stroke: var(--river); stroke-width: 1.2; }
+.seal-tower { fill: var(--field-wash); stroke: var(--field); stroke-width: 1.3; stroke-linejoin: round; }
+.seal-deck { fill: none; stroke: var(--ink-soft); stroke-width: 1.4; stroke-linecap: round; }
+.seal-beam { fill: none; stroke: var(--ink-soft); stroke-width: 1.4; stroke-linecap: round; }
+.seal-pan { fill: var(--field-wash); stroke: var(--field); stroke-width: 1.2; stroke-linejoin: round; }
 
 .became { display: grid; gap: 0.35rem; }
 .became li { padding-left: 1rem; position: relative; }
 .became li::before { content: ""; position: absolute; left: 0; top: 0.72em; width: 0.5rem; border-top: 1.5px solid var(--ink-soft); }
 .became li.is-close { font-weight: 600; padding-left: 0; margin-top: 0.2rem; }
 .became li.is-close::before { content: none; }
+/* the four new places tell many more changes of way: their list keeps to a box that scrolls, at its closing
+   lines, so that the buttons under it stay near the top of the Chronicle (the valley's list is as published) */
+:root:not([data-place="valley"]) .became { max-height: 14rem; overflow-y: auto; padding-right: 0.25rem; }
+.became:focus-visible { outline: 2px solid var(--river); outline-offset: 2px; }
 @media (min-width: 62rem) {
   .chron-grid { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
 }
@@ -647,6 +821,10 @@ h2:focus-visible, h1:focus-visible, h3:focus-visible, h4:focus-visible { outline
       <div class="opening-text">
         <p class="sheet-no" id="opening-valley" hidden></p>
         <h1 id="h-opening" tabindex="-1">After You</h1>
+        <fieldset class="places" id="opening-places" hidden>
+          <legend class="vh" id="opening-places-head">Where you live</legend>
+          <div class="places-row" id="opening-places-row"></div>
+        </fieldset>
         <p class="premise" id="opening-premise">Twelve days of harvest in a valley of eight houses. Then you leave, and the valley goes on without you.</p>
         <ul class="stakes" id="opening-lines" role="list">
           <li>Each day, each of your four neighbours has a crop that will not wait. You can send a hand or stay home. So can they.</li>
@@ -841,15 +1019,20 @@ h2:focus-visible, h1:focus-visible, h3:focus-visible, h4:focus-visible { outline
         <div class="actions">
           <button type="button" class="btn btn-primary" id="again">Live another life</button>
           <button type="button" class="btn btn-quiet" id="again-same">Live this valley again</button>
+          <button type="button" class="btn btn-quiet" id="other-place" hidden>Choose another place</button>
         </div>
         <div class="past" id="chron-past" hidden>
           <h3 class="label" id="chron-past-head">Earlier lives</h3>
           <ol id="chron-past-list" role="list"></ol>
         </div>
+        <section class="chron-block afterword" aria-labelledby="h-chron-afterword">
+          <h3 class="label" id="h-chron-afterword">Afterword</h3>
+          <p id="chron-afterword"></p>
+        </section>
       </div>
     </div>
   </section>
 
 </main>
 
-<script src="engine.js"></script><script src="words.js"></script><script src="app.js"></script>
+<script src="engine.js"></script><script src="words.js"></script><script src="places/valley.js"></script><script src="places/banks.js"></script><script src="places/watch.js"></script><script src="places/bridges.js"></script><script src="places/saltmarket.js"></script><script src="sheet.js"></script><script src="app.js"></script>

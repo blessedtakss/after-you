@@ -1,26 +1,46 @@
 /*
  * After You: the page. Plain JavaScript, no frameworks, no build step.
- * Rules come from engine.js (AfterYou), every sentence from words.js (AYWords).
- * The map of the valley is drawn here as inline SVG; its colours come from the CSS tokens
- * through classes, so a change of theme needs no redraw.
+ * Rules come from engine.js (AfterYou), every sentence from words.js (AYWords), the place's
+ * own data from places/<id>.js (AYPlaces), and every map and small drawing from sheet.js
+ * (AYSheet) as inline SVG; its colours come from the CSS tokens through classes, so a change of
+ * theme needs no redraw.
  *
- * A Life is rebuildable from state.seed and state.choices (see restore()).
+ * A Life is rebuildable from state.place, state.seed and state.choices (see restore()).
+ *
+ * Places. The Opening offers the places this page has the words for (AYPlaces), in the engine's
+ * play order (AfterYou.PLACE_ORDER), as one radio group; it is shown only when there are two or
+ * more. Choosing one puts it in hand: its words in force (AYWords.use), the copy at rest written
+ * again (fillStatic), the Opening drawn again. Every number that states a rule is read from a Life
+ * of the place in hand (life.params, today(), playDay(), the verdict), never typed in here. The place in
+ * hand is marked on the root (data-place) for its colours. Where its rules have a stock (the Banks)
+ * every tie carries a level: drawn as a gauge on each card's head (with words for a listener), on the
+ * sheets' crossings and, in the Afterwards, on all sixteen ties (bankNode, levelsOf, drawBanks30).
+ * Where the stakes have a share when both acts arrive and a loss when neither does (S, H), the day's
+ * sentences are asked with the Life's rules, which fill the stakes into the place's words. A store can
+ * run below zero (a starting store, STORE_START, can stand in it from day 1): the meter then draws the
+ * part below zero hatched, to the left of a zero mark (meterInto). Where the charter is inverted
+ * (CHARTER 'breaks': the town is better off when the ring of ties breaks) the day's total is followed by
+ * what the town paid for the ring today (townOf, AYWords.dayTown), and the strip's good side is under
+ * its line (flowSide).
  */
 (function () {
   'use strict';
 
-  var A = window.AfterYou, W = window.AYWords;
+  var A = window.AfterYou, W = window.AYWords, S = window.AYSheet, P = window.AYPlaces;
   var ORDER = [1, 2, 6, 7];                 // the engine's order of the four neighbours
   var MIRROR = [0, 1, 3, 2, 4];             // my situation on a tie -> theirs
   var SEASON_MS = 660;                      // thirty seasons in about twenty seconds
   var SETTLE_MS = 350;                      // what has just appeared stands this long before its button takes a click
   var STORE_KEY = 'after-you.lives.v1';
+  var KEEP_LIVES = 60;                      // stored lives, every place together, newest first
 
   var state = {
     view: 'opening',
     viewAt: 0,             // when the view on screen was shown by the reader's own step (see fresh)
+    place: 'valley',       // the place in hand: a key of AYPlaces and of AfterYou.PLACES; its words are in force
     seed: null,            // valley number of the Life in progress
-    fixedSeed: null,       // from #valley-<number>
+    hash: null,            // { place, seed } from #<place>-<seed> (seed null for #<place>), or null (see readHash)
+    fixedSeed: null,       // the hash's seed while the hash's place is in hand
     life: null,            // the engine's Life (rebuildable from seed + choices)
     choices: [],           // closed days, each [bool x 4] in the order [1, 2, 6, 7]
     pending: {},           // today's choices so far: { houseId: bool }
@@ -50,11 +70,6 @@
   // ---- small helpers ------------------------------------------------------------------------
 
   function $(id) { return document.getElementById(id); }
-  function esc(s) {
-    return String(s).replace(/[&<>"']/g, function (c) {
-      return c === '&' ? '&amp;' : c === '<' ? '&lt;' : c === '>' ? '&gt;' : c === '"' ? '&quot;' : '&#39;';
-    });
-  }
   function el(tag, attrs, kids) {
     var node = document.createElement(tag), k, i, v;
     if (attrs) {
@@ -63,7 +78,7 @@
         if (v === null || v === undefined || v === false) continue;
         if (k === 'class') node.className = v;
         else if (k === 'text') node.textContent = v;
-        else if (k === 'html') node.innerHTML = v;          // only SVG strings built in this file
+        else if (k === 'html') node.innerHTML = v;          // only SVG strings built by sheet.js and this file
         else if (k === 'hidden') node.hidden = true;
         else if (k === 'disabled') node.disabled = true;
         else if (k === 'checked') node.checked = true;
@@ -73,6 +88,7 @@
     if (kids) for (i = 0; i < kids.length; i++) if (kids[i]) node.appendChild(kids[i]);
     return node;
   }
+  function hasOwn(o, k) { return Object.prototype.hasOwnProperty.call(o, k); }
   function clear(node) { while (node.firstChild) node.removeChild(node.firstChild); }
   function setText(id, text) { var n = $(id); if (n) n.textContent = text; }
   // Text that stands in the display face: a plus or minus before a digit goes into a span that
@@ -88,7 +104,6 @@
     }
   }
   function now() { return window.performance && performance.now ? performance.now() : Date.now(); }
-  function f(n) { return String(Math.round(n * 10) / 10); }
   function clamp(x, lo, hi) { return x < lo ? lo : x > hi ? hi : x; }
   function media(q) {
     var m = window.matchMedia ? window.matchMedia(q) : null;
@@ -160,6 +175,10 @@
   }
 
   // ---- earlier lives (localStorage, optional) -----------------------------------------------
+  // Each stored life names its place (an entry stored before there were places has none: the
+  // valley). One list for every place, up to KEEP_LIVES; the Opening and the Chronicle list the
+  // lives of the place in hand only. A life of a place this page has no words for stays in the
+  // store and is never listed.
 
   function okNum(x) { return typeof x === 'number' && isFinite(x); }
   function loadLives() {
@@ -168,407 +187,89 @@
       raw = window.localStorage.getItem(STORE_KEY);
       list = raw ? JSON.parse(raw) : [];
       if (!Array.isArray(list)) list = [];
-      for (i = 0; i < list.length && out.length < 20; i++) {
+      for (i = 0; i < list.length && out.length < KEEP_LIVES; i++) {
         e = list[i];
         if (!e || typeof e !== 'object' || !okNum(e.seed) || !okNum(e.purse) || !okNum(e.need) || !(e.need > 0) || !okNum(e.mark)) continue;
-        out.push({ seed: e.seed, kept: !!e.kept, purse: e.purse, need: e.need, mark: e.mark, seal: !!e.seal });
+        if (e.place !== undefined && (typeof e.place !== 'string' || !/^[a-z]+$/.test(e.place))) continue;
+        out.push({ place: e.place === undefined ? 'valley' : e.place, seed: e.seed, kept: !!e.kept, purse: e.purse, need: e.need, mark: e.mark, seal: !!e.seal });
       }
     } catch (err) { out = []; }
     return out;
   }
   function saveLife(entry) {
     state.lives.unshift(entry);
-    if (state.lives.length > 20) state.lives.length = 20;
+    if (state.lives.length > KEEP_LIVES) state.lives.length = KEEP_LIVES;
     try { window.localStorage.setItem(STORE_KEY, JSON.stringify(state.lives)); } catch (err) { /* storage unavailable: the list lives in memory */ }
   }
+  function livesHere() { return state.lives.filter(function (e) { return e.place === state.place; }); }
   // limit: how many to list, newest first (all of them where none is given). Returns that number.
+  var PAST_IN_CHRONICLE = 20;                   // the Chronicle lists the newest twenty, as many as the first page ever kept
   function drawPast(boxId, listId, limit) {
-    var box = $(boxId), list = $(listId), n = state.lives.length, shown = limit ? Math.min(limit, n) : n, i;
+    var box = $(boxId), list = $(listId), lives = livesHere(), n = lives.length, shown = limit ? Math.min(limit, n) : n, i;
     clear(list);
-    for (i = 0; i < shown; i++) list.appendChild(el('li', { text: W.pastLife(state.lives[i]) }));
+    for (i = 0; i < shown; i++) list.appendChild(el('li', { text: W.pastLife(lives[i]) }));
     box.hidden = !n;
     return shown;
   }
-  // The Opening is complete at rest on a laptop, so it lists the latest three lives and keeps
-  // the older ones behind their count (the Chronicle lists them all). A single older life is
-  // listed outright: a control that holds one line saves none.
-  var PAST_SHOWN = 3;
+  // The Opening is complete at rest on a laptop, so it lists the latest three lives (two where
+  // the choice of places takes a row of the Opening) and keeps the older ones behind their count
+  // (the Chronicle lists them all). A single older life is listed outright: a control that holds
+  // one line saves none.
+  var PAST_SHOWN = 3, PAST_SHOWN_CHOOSING = 2;
   function drawOpeningPast() {
-    var more = $('opening-past-more'), rest = $('opening-past-rest'), n = state.lives.length, i;
-    var shown = drawPast('opening-past', 'opening-past-list', n > PAST_SHOWN + 1 ? PAST_SHOWN : n);
+    var more = $('opening-past-more'), rest = $('opening-past-rest'), lives = livesHere(), n = lives.length, i;
+    var most = choosing() ? PAST_SHOWN_CHOOSING : PAST_SHOWN;
+    var shown = drawPast('opening-past', 'opening-past-list', n > most + 1 ? most : n);
     clear(rest);
-    for (i = shown; i < n; i++) rest.appendChild(el('li', { text: W.pastLife(state.lives[i]) }));
+    for (i = shown; i < n; i++) rest.appendChild(el('li', { text: W.pastLife(lives[i]) }));
     more.open = false;
     more.hidden = n <= shown;
     if (n > shown) setText('opening-past-more-head', W.pastMore(n - shown));
   }
 
-  // ---- geometry of the sheet ----------------------------------------------------------------
-  // One layout of the valley, used by every view: your holding at the foot inside the bend of
-  // the river, four neighbours on an arc across the ford, three holdings beyond the ridge.
-  // Positions are fractions of the sheet; two sheet sizes keep lettering legible on a phone.
-  // The lettering is sized so that no word falls under 11px where its sheet is drawn smallest:
-  // the wide sheet in a box of 34rem (scale 0.91), the compact one across a 400px phone (0.97).
-  // In a narrower box (a phone under 400px) the compact sheet's lettering is enlarged by what
-  // the box lacks, so that the same holds there (letterUp, lettered).
-  // crop: where a phone's day map is cut, just above the ridge (see mapSVG).
+  // ---- places -------------------------------------------------------------------------------
 
-  var LAYOUT = {
-    wide:    { W: 600, H: 450, pw: 44, ph: 30, hb: 10, bound: 6, name: 12.5, sub: 12.25, num: 13, note: 12.25, pad: 6, grid: 49, river: 9, water: 6.2, ford: 5.5, lane: 4.2, head: 4.6, crop: 99 },
-    compact: { W: 380, H: 300, pw: 36, ph: 25, hb: 8, bound: 5, name: 12, sub: 11.5, num: 11.5, note: 11.5, pad: 5, grid: 37, river: 7, water: 4.6, ford: 4.6, lane: 3.6, head: 4.2, crop: 59 }
-  };
-  var POS = [[0.50, 0.845], [0.83, 0.665], [0.67, 0.42], [0.81, 0.165], [0.50, 0.13], [0.19, 0.165], [0.33, 0.42], [0.17, 0.665]];
-  var RIVER = [[-0.03, 0.87], [0.10, 0.845], [0.255, 0.80], [0.36, 0.695], [0.50, 0.655], [0.64, 0.695], [0.745, 0.80], [0.90, 0.83], [1.03, 0.80]];
-  var RIDGE = [[-0.02, 0.315], [0.12, 0.30], [0.27, 0.31], [0.40, 0.295], [0.50, 0.285], [0.62, 0.30], [0.76, 0.29], [0.90, 0.305], [1.02, 0.295]];
-  var BEND = { '0-1': 0.07, '0-7': -0.07, '0-2': 0.05, '0-6': -0.05, '1-2': 0.08, '6-7': 0.08, '1-7': 0.18,
-               '1-3': 0.10, '5-7': 0.10, '2-4': 0.10, '4-6': 0.10, '3-5': -0.16 };
-  var TIES = (function () {                 // sixteen ties: each house with the two on either side
-    var out = [], a, b, d;
-    for (a = 0; a < 8; a++) for (b = a + 1; b < 8; b++) {
-      d = Math.min(b - a, 8 - (b - a));
-      if (d <= 2) out.push({ a: a, b: b, key: a + '-' + b });
-    }
-    return out;
-  })();
-  function isFar(id) { return id >= 3 && id <= 5; }
-  var LETTER_PX = 11;                       // no lettering on a map is drawn smaller than this
-  // By how much a sheet's lettering must grow for its smallest word to reach LETTER_PX in a box
-  // of this width: 1 wherever the sheet is drawn at the sizes it was laid out for.
-  function letterUp(kind, boxWidth) {
-    var L = LAYOUT[kind];
-    if (!(boxWidth > 0)) return 1;
-    var least = Math.min(L.name, L.sub, L.num, L.note) * boxWidth / L.W;
-    return least < LETTER_PX ? Math.ceil(LETTER_PX / least * 100) / 100 : 1;
-  }
-  function lettered(L, up) {                // the same sheet with its lettering enlarged
-    if (!(up > 1)) return L;
-    var out = {}, k;
-    for (k in L) out[k] = L[k];
-    out.name = Math.ceil(L.name * up * 10) / 10; out.sub = Math.ceil(L.sub * up * 10) / 10;
-    out.num = Math.ceil(L.num * up * 10) / 10; out.note = Math.ceil(L.note * up * 10) / 10;
+  // The places the Opening offers: the engine's play order, those this page has the words for.
+  function placesHere() {
+    var out = [], i;
+    for (i = 0; i < A.PLACE_ORDER.length; i++) if (hasOwn(P.byId, A.PLACE_ORDER[i])) out.push(A.PLACE_ORDER[i]);
     return out;
   }
+  function choosing() { return placesHere().length > 1; }      // the choice, and the way back to it, show only then
+  // The rules of the place in hand, from a Life of it (every seed has the same rules): what the
+  // Opening and the copy at rest state before any Life is begun.
+  var rulesOf = {};
+  function placeParams() {
+    if (!rulesOf[state.place]) rulesOf[state.place] = A.createLife(1, state.place).params;
+    return rulesOf[state.place];
+  }
+  // Put a place in hand: its words in force, the copy at rest written again in them, and the
+  // hash's seed fixed if the hash names this place. A hash that names another place is written over
+  // with this one's (#<place>, no seed): the address never names a place other than the one in hand.
+  function setPlace(id) {
+    state.place = id;
+    W.use(id);
+    markPlace();
+    fillStatic();
+    if (state.hash && state.hash.place !== id) writeHash(id);
+    fixFromHash();
+  }
+  // The style sheet's colours follow the place in hand: its token blocks are chosen by this mark.
+  function markPlace() {
+    try { document.documentElement.setAttribute('data-place', state.place); } catch (e) { /* no page to mark */ }
+  }
+  // The stock of the place in hand (its rules' STOCK), or null: where there is one, every tie carries
+  // a level, drawn as a gauge (sheet.js) and said by AYWords.bankNow and bankDay.
+  function stockOf(p) { return p && p.STOCK ? p.STOCK : null; }
+  // Whether the town pays for the ring of the place in hand (its charter is inverted: CHARTER 'breaks').
+  function townOf(p) { return !!(p && p.CHARTER === 'breaks'); }
+  function fixFromHash() { state.fixedSeed = state.hash && state.hash.place === state.place ? state.hash.seed : null; }
 
-  function dist(a, b) { var dx = a[0] - b[0], dy = a[1] - b[1]; return Math.sqrt(dx * dx + dy * dy); }
-  function catmull(pts, per) {
-    var out = [], i, j, p0, p1, p2, p3, t, t2, t3, k;
-    for (i = 0; i < pts.length - 1; i++) {
-      p0 = pts[Math.max(0, i - 1)]; p1 = pts[i]; p2 = pts[i + 1]; p3 = pts[Math.min(pts.length - 1, i + 2)];
-      for (j = 0; j < per; j++) {
-        t = j / per; t2 = t * t; t3 = t2 * t;
-        var q = [0, 0];
-        for (k = 0; k < 2; k++) {
-          q[k] = 0.5 * (2 * p1[k] + (p2[k] - p0[k]) * t + (2 * p0[k] - 5 * p1[k] + 4 * p2[k] - p3[k]) * t2 +
-                 (3 * p1[k] - p0[k] - 3 * p2[k] + p3[k]) * t3);
-        }
-        out.push(q);
-      }
-    }
-    out.push(pts[pts.length - 1].slice());
-    return out;
-  }
-  function quadLine(a, b, k, n) {            // a gently bent path from a to b; k bends it to one side
-    var mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2, dx = b[0] - a[0], dy = b[1] - a[1];
-    var cx = mx - dy * k, cy = my + dx * k, out = [], i, t, u;
-    for (i = 0; i <= n; i++) {
-      t = i / n; u = 1 - t;
-      out.push([u * u * a[0] + 2 * u * t * cx + t * t * b[0], u * u * a[1] + 2 * u * t * cy + t * t * b[1]]);
-    }
-    return out;
-  }
-  function segHit(a, b, c, d) {
-    var r0 = b[0] - a[0], r1 = b[1] - a[1], s0 = d[0] - c[0], s1 = d[1] - c[1];
-    var den = r0 * s1 - r1 * s0;
-    if (Math.abs(den) < 1e-9) return null;
-    var t = ((c[0] - a[0]) * s1 - (c[1] - a[1]) * s0) / den, u = ((c[0] - a[0]) * r1 - (c[1] - a[1]) * r0) / den;
-    if (t < 0 || t > 1 || u < 0 || u > 1) return null;
-    return [a[0] + t * r0, a[1] + t * r1];
-  }
-  function crossing(line, other) {           // where a tie meets the river: the ford
-    var i, j, p;
-    for (i = 0; i < line.length - 1; i++) for (j = 0; j < other.length - 1; j++) {
-      p = segHit(line[i], line[i + 1], other[j], other[j + 1]);
-      if (p) return { i: i, p: p };
-    }
-    i = Math.floor(line.length * 0.4);
-    return { i: i, p: line[i + 1] };
-  }
-  function trimStart(line, r) {              // drop the part of the line within r of its first point
-    var c = line[0], i = 1, k, lo = 0, hi = 1, m, a, b;
-    while (i < line.length && dist(line[i], c) < r) i++;
-    if (i >= line.length) return line.slice(line.length - 2);
-    a = line[i - 1]; b = line[i];
-    for (k = 0; k < 7; k++) {
-      m = (lo + hi) / 2;
-      if (dist([a[0] + (b[0] - a[0]) * m, a[1] + (b[1] - a[1]) * m], c) < r) lo = m; else hi = m;
-    }
-    return [[a[0] + (b[0] - a[0]) * hi, a[1] + (b[1] - a[1]) * hi]].concat(line.slice(i));
-  }
-  function trimEnd(line, r) { return trimStart(line.slice().reverse(), r).reverse(); }
-  function offsetLine(line, d) {             // shift to the right of the direction of travel
-    var out = [], i, a, b, dx, dy, len;
-    for (i = 0; i < line.length; i++) {
-      a = line[Math.max(0, i - 1)]; b = line[Math.min(line.length - 1, i + 1)];
-      dx = b[0] - a[0]; dy = b[1] - a[1]; len = Math.sqrt(dx * dx + dy * dy) || 1;
-      out.push([line[i][0] - dy / len * d, line[i][1] + dx / len * d]);
-    }
-    return out;
-  }
-  function pathD(line) {
-    var s = 'M' + f(line[0][0]) + ' ' + f(line[0][1]), i;
-    for (i = 1; i < line.length; i++) s += 'L' + f(line[i][0]) + ' ' + f(line[i][1]);
-    return s;
-  }
+  // ---- the sheet ----------------------------------------------------------------------------
+  // Every map is drawn by sheet.js (AYSheet) from the sheet definition of the place in hand.
 
-  var geoCache = {};
-  function geo(kind) {
-    if (geoCache[kind]) return geoCache[kind];
-    var L = LAYOUT[kind], g = { L: L, pos: [], ties: {}, fords: {} }, i;
-    function scaled(list) { return list.map(function (p) { return [p[0] * L.W, p[1] * L.H]; }); }
-    g.pos = scaled(POS);
-    g.river = catmull(scaled(RIVER), 10);
-    g.ridge = catmull(scaled(RIDGE), 8);
-    for (i = 0; i < TIES.length; i++) {
-      g.ties[TIES[i].key] = quadLine(g.pos[TIES[i].a], g.pos[TIES[i].b], BEND[TIES[i].key] || 0, 40);
-    }
-    for (i = 0; i < ORDER.length; i++) g.fords[ORDER[i]] = crossing(g.ties['0-' + ORDER[i]], g.river);
-    geoCache[kind] = g;
-    return g;
-  }
-  function tieLine(g, from, to) {            // the tie's path, walked from one house to the other
-    var line = g.ties[from < to ? from + '-' + to : to + '-' + from];
-    return from < to ? line : line.slice().reverse();
-  }
+  function sheetDef() { return P.byId[state.place].sheet; }
 
-  // ---- drawing the map ----------------------------------------------------------------------
-
-  function roundRect(x, y, w, h, r) {
-    var a = 'A' + r + ' ' + r + ' 0 0 1 ';
-    return 'M' + f(x + r) + ' ' + f(y) + 'H' + f(x + w - r) + a + f(x + w) + ' ' + f(y + r) + 'V' + f(y + h - r) +
-           a + f(x + w - r) + ' ' + f(y + h) + 'H' + f(x + r) + a + f(x) + ' ' + f(y + h - r) + 'V' + f(y + r) +
-           a + f(x + r) + ' ' + f(y) + 'Z';
-  }
-  function arrowSVG(pts, L) {                // a hand that arrived: a solid stroke with a head
-    var n = pts.length, tip = pts[n - 1], back = pts[Math.max(0, n - 4)];
-    var dx = tip[0] - back[0], dy = tip[1] - back[1], len = Math.sqrt(dx * dx + dy * dy) || 1, h = L.head;
-    dx /= len; dy /= len;
-    var bx = tip[0] - dx * h * 2, by = tip[1] - dy * h * 2;
-    return '<path class="m-hand" d="' + pathD(trimEnd(pts, h * 1.6)) + '"/>' +
-           '<path class="m-hand-head" d="M' + f(tip[0]) + ' ' + f(tip[1]) + 'L' + f(bx - dy * h) + ' ' + f(by + dx * h) +
-           'L' + f(bx + dy * h) + ' ' + f(by - dx * h) + 'Z"/>';
-  }
-  function barSVG(p, q, half, cls) {         // a short bar through p, square to the direction p -> q
-    var dx = q[0] - p[0], dy = q[1] - p[1], len = Math.sqrt(dx * dx + dy * dy) || 1;
-    dx /= len; dy /= len;
-    return '<path class="' + cls + '" d="M' + f(p[0] - dy * half) + ' ' + f(p[1] + dx * half) + 'L' + f(p[0] + dy * half) + ' ' + f(p[1] - dx * half) + '"/>';
-  }
-  function crossSVG(p, q, half, cls) {       // a cross at p, its arms at 45 degrees to the direction p -> q
-    var dx = q[0] - p[0], dy = q[1] - p[1], len = Math.sqrt(dx * dx + dy * dy) || 1, k = half * 0.7071;
-    dx /= len; dy /= len;
-    var ax = (dx - dy) * k, ay = (dy + dx) * k, bx = (dx + dy) * k, by = (dy - dx) * k;
-    return '<path class="' + cls + '" d="M' + f(p[0] - ax) + ' ' + f(p[1] - ay) + 'L' + f(p[0] + ax) + ' ' + f(p[1] + ay) +
-           'M' + f(p[0] - bx) + ' ' + f(p[1] - by) + 'L' + f(p[0] + bx) + ' ' + f(p[1] + by) + '"/>';
-  }
-  function labelAt(g, L, id, withSub) {      // where a holding's name is lettered (L: the sheet with the lettering in use)
-    var c = g.pos[id], gap = L.pw / 2 + L.bound + 4;
-    if (id === 2 || id === 6) {
-      var x = id === 2 ? c[0] + gap : c[0] - gap, y = withSub ? c[1] - 2 : c[1] + L.name * 0.35;
-      return { x: x, y: y, subY: c[1] + L.sub + 1, anchor: id === 2 ? 'start' : 'end' };
-    }
-    if (isFar(id)) {
-      var top = c[1] - L.ph / 2 - L.bound - 4;
-      return { x: c[0], y: withSub ? top - L.sub - 1 : top, subY: top, anchor: 'middle' };
-    }
-    var base = c[1] + L.ph / 2 + L.bound + L.name + 1;
-    // the east and west holdings stand just above the river: a second line under the name would
-    // be lettered across the water, so it goes above the holding instead
-    return { x: c[0], y: base, subY: c[1] - L.ph / 2 - L.bound - 5, anchor: 'middle' };
-  }
-  // fit: where given, the text is set to exactly that length (see nameRoom)
-  function textSVG(cls, x, y, size, anchor, text, id, fit) {
-    return '<text class="' + cls + '"' + (id ? ' id="' + id + '"' : '') + ' x="' + f(x) + '" y="' + f(y) + '" font-size="' + size + '"' +
-           (fit ? ' textLength="' + f(fit) + '" lengthAdjust="spacingAndGlyphs"' : '') +
-           (anchor && anchor !== 'middle' ? ' style="text-anchor:' + anchor + '"' : '') + '>' + esc(text) + '</text>';
-  }
-  // A name lettered beside its holding (the north-east and north-west ones) runs toward the edge
-  // of the sheet. Where the lettering is enlarged for a narrow phone, a long name could cross
-  // the frame there: it is then set to the room there is. Returns that room, or 0 where the
-  // name fits as it is (by a generous estimate of spaced capitals: at the sizes a sheet was laid
-  // out for, every name fits).
-  function nameRoom(L, lab, text) {
-    if (lab.anchor === 'middle') return 0;
-    var room = lab.anchor === 'start' ? L.W - L.pad - 4 - lab.x : lab.x - L.pad - 4;
-    return String(text).length * L.name * 0.92 > room ? Math.max(room, 10) : 0;
-  }
-
-  // One holding: a field parcel with its house. o: { unseen, plain, yours, segs, slot, click, hot, after }
-  function holdSVG(g, id, o) {
-    var L = g.L, c = g.pos[id], x = c[0] - L.pw / 2, y = c[1] - L.ph / 2, s, k;
-    var cls = 'm-hold' + (o.yours ? ' is-yours' : '') + (o.click ? ' is-click' : '') + (o.hot ? ' is-hot' : '');
-    s = '<g class="' + cls + '" data-map-house="' + id + '"' + (o.after ? ' id="af-hold-' + id + '"' : '') + '>';
-    if (o.unseen) {
-      return s + '<rect class="m-parcel is-unseen" x="' + f(x) + '" y="' + f(y) + '" width="' + L.pw + '" height="' + L.ph + '"/></g>';
-    }
-    var bd = roundRect(x - L.bound, y - L.bound, L.pw + 2 * L.bound, L.ph + 2 * L.bound, 4);
-    if (o.slot) s += '<path class="m-bound-slot" d="' + bd + '"/>';
-    if (o.segs) {
-      for (k = 0; k < 5; k++) {
-        if (o.segs[k]) s += '<path class="m-bound" pathLength="100" stroke-dasharray="15 85" stroke-dashoffset="' + (-(k * 20 + 2.5)) + '" d="' + bd + '"/>';
-      }
-    }
-    if (o.after) s += '<path class="m-bound m-bound-full" d="' + bd + '"/>';
-    s += '<rect class="m-parcel' + (o.plain || o.after ? ' is-plain' : '') + '" x="' + f(x) + '" y="' + f(y) + '" width="' + L.pw + '" height="' + L.ph + '"/>';
-    if (o.after) {
-      s += '<rect class="m-fill" id="af-fill-' + id + '" x="' + f(x + 0.6) + '" y="' + f(y + 0.6) + '" width="' + f(L.pw - 1.2) + '" height="' + f(L.ph - 1.2) + '" style="transform:scaleY(0)"/>';
-    }
-    for (k = 1; k <= 3; k++) {
-      s += '<path class="m-furrow" d="M' + f(x + 2) + ' ' + f(y + L.ph * k / 4) + 'H' + f(x + L.pw - 2) + '"/>';
-    }
-    var hx = x + 3, hy = y + 3, hc = L.hb / 2, hr = L.hb * 0.72;
-    s += '<rect class="m-house" x="' + f(hx) + '" y="' + f(hy) + '" width="' + L.hb + '" height="' + L.hb + '"/>';
-    s += '<path class="m-diamond" d="M' + f(hx + hc) + ' ' + f(hy + hc - hr) + 'L' + f(hx + hc + hr) + ' ' + f(hy + hc) + 'L' + f(hx + hc) + ' ' + f(hy + hc + hr) + 'L' + f(hx + hc - hr) + ' ' + f(hy + hc) + 'Z"/>';
-    if (o.after) s += '<path class="m-tent" d="M' + f(hx + hc) + ' ' + f(hy - 1) + 'L' + f(hx + L.hb + 1.5) + ' ' + f(hy + L.hb) + 'L' + f(hx - 1.5) + ' ' + f(hy + L.hb) + 'Z"/>';
-    if (o.click) {
-      s += '<rect class="m-hit" x="' + f(x - L.bound - 8) + '" y="' + f(y - L.bound - 8) + '" width="' + f(L.pw + 2 * L.bound + 16) + '" height="' + f(L.ph + 2 * L.bound + L.name + 20) + '"/>';
-    }
-    return s + '</g>';
-  }
-
-  /*
-   * mode 'sheet'   the opening: the place, unnamed, with one hand to show the stakes
-   *      'day'     o: { names, kin, follow, keeps, hands, kinWith, hot, click, crop, alt }
-   *                crop: the sheet is cut just above the ridge (a phone's day map: the three
-   *                holdings you cannot see are left off, so that the first card is on the first
-   *                screen); alt: what the map shows today, in words
-   *      'leaving' o: { names, kin, follow, keeps }
-   *      'after'   o: { kin }; all eight holdings and sixteen ties, filled season by season (drawSeason30)
-   * In every mode o.up enlarges the lettering (see letterUp); the geometry stays the sheet's.
-   */
-  function mapSVG(kind, mode, o) {
-    o = o || {};
-    var g = geo(kind), L = lettered(g.L, o.up), labels = W.mapLabels(), s = [], i, id, t, cls, lab, c;
-    var after = mode === 'after', clip = 'clip-' + mode;
-    var r = L.pw / 2 + L.bound + 3;
-    var top = o.crop && mode === 'day' ? L.crop : 0, fy = top + L.pad, fh = L.H - top - 2 * L.pad;     // the frame's top edge and height
-    s.push('<svg viewBox="0 ' + top + ' ' + L.W + ' ' + (L.H - top) + '" role="img" aria-label="' + esc(o.alt || W.mapAlt(mode === 'leaving' ? 'day' : mode)) + '" focusable="false">');
-    s.push('<defs><clipPath id="' + clip + '"><rect x="' + L.pad + '" y="' + fy + '" width="' + (L.W - 2 * L.pad) + '" height="' + fh + '"/></clipPath></defs>');
-    s.push('<rect class="m-frame" x="' + L.pad + '" y="' + fy + '" width="' + (L.W - 2 * L.pad) + '" height="' + fh + '"/>');
-    s.push('<rect class="m-frame-outer" x="' + (L.pad - 3.5) + '" y="' + (fy - 3.5) + '" width="' + (L.W - 2 * L.pad + 7) + '" height="' + (fh + 7) + '"/>');
-    s.push('<g clip-path="url(#' + clip + ')">');
-    for (t = L.pad + L.grid; t < L.W - L.pad - 2; t += L.grid) s.push('<path class="m-gridline" d="M' + f(t) + ' ' + fy + 'V' + (L.H - L.pad) + '"/>');
-    for (t = L.pad + L.grid; t < L.H - L.pad - 2; t += L.grid) s.push('<path class="m-gridline" d="M' + L.pad + ' ' + f(t) + 'H' + (L.W - L.pad) + '"/>');
-    // the ridge, with hachures on its near side
-    s.push('<path class="m-ridge" d="' + pathD(g.ridge) + '"/>');
-    for (i = 1; i < g.ridge.length - 1; i += 2) {
-      var ra = g.ridge[i - 1], rb = g.ridge[i + 1], rdx = rb[0] - ra[0], rdy = rb[1] - ra[1], rl = Math.sqrt(rdx * rdx + rdy * rdy) || 1;
-      var hl = (i % 4 === 1 ? 5 : 3.2) * (L.W / 600 * 0.5 + 0.5);
-      s.push('<path class="m-hachure" d="M' + f(g.ridge[i][0]) + ' ' + f(g.ridge[i][1] + 1) + 'l' + f(-rdy / rl * hl) + ' ' + f(rdx / rl * hl) + '"/>');
-    }
-    // the river
-    s.push('<path class="m-river-bank" stroke-width="' + L.river + '" d="' + pathD(g.river) + '"/>');
-    s.push('<path class="m-river-water" stroke-width="' + L.water + '" d="' + pathD(g.river) + '"/>');
-    // ties
-    for (i = 0; i < TIES.length; i++) {
-      t = TIES[i];
-      var farEnds = (isFar(t.a) ? 1 : 0) + (isFar(t.b) ? 1 : 0);
-      if (!after && farEnds === 2) continue;                       // ties you never saw
-      cls = 'm-tie';
-      if (!after && t.a === 0) cls += ' is-mine' + (o.hot === t.b ? ' is-hot' : '');
-      if (!after && farEnds === 1) cls += ' is-far';
-      s.push('<path class="' + cls + '" data-tie="' + t.key + '" d="' + pathD(g.ties[t.key]) + '"/>');
-    }
-    s.push('</g>');
-    // the ford: where each of your ties meets the river
-    for (i = 0; i < ORDER.length; i++) {
-      c = g.fords[ORDER[i]].p;
-      s.push('<circle class="m-ford" cx="' + f(c[0]) + '" cy="' + f(c[1]) + '" r="' + L.ford + '"/>');
-    }
-    // holdings
-    for (id = 0; id < 8; id++) {
-      if (after) s.push(holdSVG(g, id, { after: true }));
-      else if (isFar(id)) { if (!top) s.push(holdSVG(g, id, { unseen: true })); }
-      else if (id === 0) s.push(holdSVG(g, id, { yours: true, segs: [true, true, true, true, true] }));
-      else if (mode === 'sheet') s.push(holdSVG(g, id, {}));
-      else s.push(holdSVG(g, id, { yours: !!(o.keeps && o.keeps[id]), segs: o.follow ? o.follow[id] : null, slot: id === o.kin, click: !!o.click, hot: o.hot === id }));
-    }
-    // hands
-    if (mode === 'sheet') {
-      s.push(arrowSVG(offsetLine(trimEnd(trimStart(tieLine(g, 0, 1), r), r), L.lane), L));
-    }
-    if (mode === 'day' && o.hands) {
-      for (i = 0; i < ORDER.length; i++) {
-        id = ORDER[i];
-        var h = o.hands[id], out = tieLine(g, 0, id), ford = g.fords[id];
-        if (!h) continue;
-        var toFord = out.slice(0, ford.i + 1).concat([ford.p]);
-        var gate = trimStart(out, r + 3);
-        if (h.revealed) {
-          if (h.arrived) s.push(arrowSVG(offsetLine(trimEnd(trimStart(out, r), r), L.lane), L));
-          else if (h.lost) {
-            var broken = offsetLine(trimEnd(trimStart(toFord, r), L.ford + 1.5), L.lane);
-            // a hand like any other (the lane, its green), but broken, with no head, and crossed out at the ford
-            s.push('<path class="m-lost" d="' + pathD(broken) + '"/>');
-            s.push(crossSVG(broken[broken.length - 1], broken[broken.length - 2], L.lane + 1.2, 'm-lost-x'));
-          } else s.push(barSVG(gate[0], gate[1], L.lane + 2.5, 'm-stay'));
-          if (h.they) s.push(arrowSVG(offsetLine(trimEnd(trimStart(tieLine(g, id, 0), r), r), L.lane), L));
-        } else if (h.plan === true) {
-          var stub = offsetLine(trimEnd(trimStart(toFord, r), L.ford + 7), L.lane), tip = stub[stub.length - 1];
-          s.push('<path class="m-plan" d="' + pathD(stub) + '"/>');
-          s.push('<circle class="m-plan-tip" cx="' + f(tip[0]) + '" cy="' + f(tip[1]) + '" r="' + f(L.lane * 0.85) + '"/>');
-        } else if (h.plan === false) s.push(barSVG(gate[0], gate[1], L.lane + 2.5, 'm-stay'));
-      }
-      if (o.kinWith) {
-        for (i = 0; i < o.kinWith.length; i++) {
-          var kw = o.kinWith[i];
-          if (kw.kinSent) s.push(arrowSVG(offsetLine(trimEnd(trimStart(tieLine(g, o.kin, kw.id), r), r), L.lane), L));
-          if (kw.theySent) s.push(arrowSVG(offsetLine(trimEnd(trimStart(tieLine(g, kw.id, o.kin), r), r), L.lane), L));
-        }
-      }
-    }
-    // lettering, last so that it stays legible
-    if (!after && !top) {
-      c = g.pos[4];
-      s.push(textSVG('m-note', c[0], c[1] - L.ph / 2 - 6, L.note, 'middle', labels.beyond));
-    }
-    s.push(textSVG('m-note', L.W * 0.5, g.ridge[Math.floor(g.ridge.length / 2)][1] - 5, L.note, 'middle', labels.ridge));
-    s.push(textSVG('m-note is-water', L.W * 0.5, L.H * 0.745, L.note, 'middle', labels.ford));
-    for (id = 0; id < 8; id++) {
-      if (after) {
-        lab = labelAt(g, L, id, id === o.kin);       // the sister's holding keeps room for its second line
-        s.push(textSVG('m-name', lab.x, lab.y, L.name, lab.anchor, '', 'af-name-' + id));
-        s.push(textSVG('m-sub', lab.x, lab.subY, L.sub, lab.anchor, '', 'af-sub-' + id));
-        c = g.pos[id];
-        s.push(textSVG('m-num', c[0] + L.hb / 2 + 1.5, c[1] + L.num * 0.36, L.num, 'middle', '', 'af-num-' + id));
-        continue;
-      }
-      if (isFar(id)) continue;
-      if (id === 0) {
-        lab = labelAt(g, L, 0, false);
-        s.push(textSVG('m-name', lab.x, lab.y, L.name, lab.anchor, labels.yours.toUpperCase()));
-        continue;
-      }
-      if (mode === 'sheet') continue;
-      var isKin = id === o.kin;
-      lab = labelAt(g, L, id, isKin);
-      var lettering = String(o.names[id]).toUpperCase();
-      s.push(textSVG('m-name', lab.x, lab.y, L.name, lab.anchor, lettering, null, nameRoom(L, lab, lettering)));
-      if (isKin) s.push(textSVG('m-sub', lab.x, lab.subY, L.sub, lab.anchor, labels.sister));
-    }
-    if (mode === 'sheet') {                      // the stakes, on the sheet itself
-      var demo = tieLine(g, 0, 1);
-      var p1 = offsetLine(demo, L.lane + L.num)[Math.floor(demo.length * 0.27)];        // below the path, at your end
-      var p2 = offsetLine(demo, -(L.lane + L.num * 0.9))[Math.floor(demo.length * 0.82)];   // above it, at theirs
-      s.push(textSVG('m-num', p1[0], p1[1] + L.num * 0.36, L.num, 'middle', W.signed(-1)));
-      s.push(textSVG('m-num', p2[0], p2[1] + L.num * 0.36, L.num, 'middle', W.signed(3)));
-    }
-    // the north mark, in the foot of the sheet: the letters on the cards are bearings from your holding
-    var nx = L.W - L.pad - 14, ny = L.H - L.pad - 7, u = L.sub;
-    s.push('<path class="m-north" d="M' + f(nx) + ' ' + f(ny) + 'V' + f(ny - u * 1.15) + '"/>');
-    s.push('<path class="m-north-head" d="M' + f(nx) + ' ' + f(ny - u * 1.6) + 'l' + f(-u * 0.28) + ' ' + f(u * 0.55) + 'h' + f(u * 0.56) + 'z"/>');
-    s.push(textSVG('m-note is-north', nx, ny - u * 1.85, L.sub, 'middle', labels.north));
-    s.push('</svg>');
-    return s.join('');
-  }
   // Which sheet a map is drawn on follows the width of its own box, not of the window: in the
   // two-column day the map has well under half the window. Where the box cannot be measured
   // (its view is hidden) the window decides, and refitMap() corrects it once the view shows.
@@ -590,17 +291,39 @@
   function drawMap(id, mode, o) {
     var node = $(id), kind = sheetFor(node);
     mapKinds[id] = kind;
-    mapUps[id] = letterUp(kind, boxWidth(node));
+    mapUps[id] = S.letterUp(kind, boxWidth(node));
     o.up = mapUps[id];
-    node.innerHTML = mapSVG(kind, mode, o);
+    node.innerHTML = S.map(sheetDef(), kind, mode, o);
   }
-  function drawOpeningMap() { drawMap('map-opening', 'sheet', {}); }
+  // The Opening's one hand: what it costs you and what it is worth where it arrives, by the rules
+  // of the place in hand.
+  function drawOpeningMap() {
+    var p = placeParams(), st = W.stakes(p), o = { demo: [st.mine, st.theirs] }, k = stockOf(p);
+    if (k) o.gauge = { top: k.max, levels: { 1: k.start, 2: k.start, 6: k.start, 7: k.start } };     // every bank as it begins
+    drawMap('map-opening', 'sheet', o);
+  }
+  // The levels on your four ties, by house, from today() (or a closed day's results: after).
+  function levelsOf(neighbours, results) {
+    var out = {}, i;
+    for (i = 0; i < neighbours.length; i++) out[neighbours[i].id] = results ? results[i].stockAfter : neighbours[i].stock;
+    return out;
+  }
   function drawLeavingMap() {
-    drawMap('map-leaving', 'leaving', { names: names(), kin: state.life.kin, follow: state.follow, keeps: state.keeps });
+    var o = { names: names(), kin: state.life.kin, follow: state.follow, keeps: state.keeps }, k = stockOf(state.life.params);
+    if (k) {                                     // the banks as you leave them, drawn and said
+      var nbs = A.today(state.life).neighbours;
+      o.gauge = { top: k.max, levels: levelsOf(nbs, null) };
+      o.alt = W.mapAltDay(state.choices.length, 'season', nbs.map(function (nb) {     // as the day's map is said, at the end of the last day closed
+        var arcs = 0, q, fl = state.follow && state.follow[nb.id];
+        for (q = 0; fl && q < 5; q++) if (fl[q]) arcs++;
+        return { name: nb.name, kin: nb.kin, plan: null, result: null, arcs: arcs, keeps: !!(state.keeps && state.keeps[nb.id]), bank: { level: nb.stock } };
+      }), state.life.params);
+    }
+    drawMap('map-leaving', 'leaving', o);
   }
   function drawAfterMap() {
-    var a = state.after;
-    drawMap('map-after', 'after', { kin: state.life.kin });
+    var a = state.after, k = stockOf(state.life.params);
+    drawMap('map-after', 'after', k ? { kin: state.life.kin, gauge: { top: k.max } } : { kin: state.life.kin });
     if (a && a.shown > 0) drawSeason30(a.shown);
     if (a && a.done) drawFinalWays();
   }
@@ -615,71 +338,49 @@
     var id = MAP_OF[state.view], node = id ? $(id) : null, kind;
     if (!node || !(node.clientWidth > 0)) return;
     kind = sheetFor(node);
-    if (kind === mapKinds[id] && letterUp(kind, boxWidth(node)) === mapUps[id]) return;
+    if (kind === mapKinds[id] && S.letterUp(kind, boxWidth(node)) === mapUps[id]) return;
     drawViewMap();
   }
 
   // ---- drawn keys ---------------------------------------------------------------------------
 
-  function keySVG(kind) {
-    var w = 30, h = 14, b = '';
-    if (kind === 'arrived') b = '<path class="key-line" d="M2 7H19"/><path class="key-head" d="M27 7l-7.5 -3.8v7.6z"/>';
-    else if (kind === 'turned') b = '<path class="key-lost" d="M2 7H13.5"/><path class="key-ink" d="M15 4.5l5 5M20 4.5l-5 5"/><path class="key-river" d="M25.5 0.5q-2.2 3.2 0 6.5t0 6.5"/>';
-    else if (kind === 'planned') b = '<path class="key-ink" d="M2 7H16"/><circle class="key-open" cx="20.5" cy="7" r="3.3"/>';
-    else if (kind === 'home') b = '<path class="key-tie" d="M2 7H28"/><path class="key-ink" d="M11 2.5v9"/>';
-    else if (kind === 'follows') b = '<path class="key-yours" pathLength="100" stroke-dasharray="15 5" stroke-dashoffset="-2.5" d="' + roundRect(3, 2, 24, 10, 3) + '"/>';
-    else if (kind === 'help') b = '<rect class="key-parcel" x="4" y="1.5" width="22" height="11"/><rect class="key-fill" x="4.6" y="6.5" width="20.8" height="5.4"/>';
-    else if (kind === 'income') b = '<text class="key-text" x="15" y="11" font-size="11" text-anchor="middle">' + esc(W.num(21)) + '</text>';
-    else if (kind === 'keeps') b = '<path class="key-yours" d="' + roundRect(3, 1.5, 24, 11, 3) + '"/><path class="key-diamond" d="M15 3.2l3.8 3.8l-3.8 3.8l-3.8 -3.8z"/>';
-    else if (kind === 'newcomer') { b = '<path class="key-square" d="M15 2l5.5 10h-11z"/>'; }
-    else {
-      w = 14;
-      if (kind === 'held') b = '<rect class="key-held" x="3" y="3" width="8" height="8"/>';
-      else if (kind === 'fell') b = '<rect class="key-fell" x="3" y="3" width="8" height="8"/>';
-      else if (kind === 'sent') b = '<circle class="key-sent" cx="7" cy="7" r="3.6"/>';
-      else if (kind === 'stayed') b = '<circle class="key-stayed" cx="7" cy="7" r="3.6"/>';
-      else if (kind === 'fresh') b = '<circle class="key-stayed" cx="7" cy="5.5" r="3.4"/><path class="key-ink" d="M2.8 12.6h8.4"/>';
-      else if (kind === 'ghost') b = '<circle class="key-ghost" cx="7" cy="7" r="3.6"/>';
-      else if (kind === 'diamond') b = '<path class="key-diamond" d="M7 2.2l4.8 4.8l-4.8 4.8l-4.8 -4.8z"/>';
-    }
-    return '<svg width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" aria-hidden="true" focusable="false">' + b + '</svg>';
-  }
   function legendInto(node, items, withHead) {
     clear(node);
     if (withHead) node.appendChild(el('span', { class: 'legend-head', text: W.legendHead() }));
     for (var i = 0; i < items.length; i++) {
       node.appendChild(el('span', { class: 'legend-item' + (items[i][2] ? ' ' + items[i][2] : '') }, [
-        items[i][0] ? el('span', { html: keySVG(items[i][0]) }) : null,
+        items[i][0] ? el('span', { html: S.key(sheetDef(), items[i][0], items[i][3]) }) : null,
         el('span', { text: items[i][1] })
       ]));
     }
   }
-  function exchangeGlyph(r) {                    // the day's dealing in miniature: you, the river, them
-    var b = '<path class="key-river" d="M29 1q-2.6 5.5 0 11t0 11"/>' +
-            '<path class="key-diamond" d="M8 7.5l4.5 4.5l-4.5 4.5l-4.5 -4.5z"/>' +
-            '<rect class="key-square" x="46.5" y="8" width="8" height="8"/>';
-    if (r.arrived) b += '<path class="key-line" d="M17 7H37"/><path class="key-head" d="M44 7l-7.5 -3.8v7.6z"/>';
-    else if (r.lost) b += '<path class="key-lost" d="M16.5 7H22.5"/><path class="key-ink" d="M23.8 4.8l4.4 4.4M28.2 4.8l-4.4 4.4"/>';
-    else b += '<path class="key-ink" d="M17.5 3.2v7.6"/>';
-    if (r.they) b += '<path class="key-line" d="M42 17H22"/><path class="key-head" d="M15 17l7.5 -3.8v7.6z"/>';
-    return '<svg width="58" height="24" viewBox="0 0 58 24" aria-hidden="true" focusable="false">' + b + '</svg>';
-  }
 
   // ---- shared pieces: the store meter, a row of your ways -----------------------------------
 
+  // The store against the need. The scale runs from zero (or, for a store below zero, from the next
+  // ten below it) to a little past the need or the store; a tick every ten. A store above zero fills
+  // from zero; a store below zero is drawn hatched from the zero mark leftward (form, not colour), so
+  // that the bar reads true at both ends. The need is always above zero (the engine's).
   function meterInto(node, purse, need) {
     clear(node);
-    var max = Math.max(need + Math.max(6, Math.round(need * 0.12)), purse + 3), t;
+    var lo = purse < 0 ? -10 * Math.ceil((3 - purse) / 10) : 0, t;
+    var max = Math.max(need + Math.max(6, Math.round(need * 0.12)), purse + 3), span = max - lo;
+    function at(x) { return ((x - lo) / span * 100).toFixed(2) + '%'; }
     var bar = el('div', { class: 'meter-bar' });
-    bar.appendChild(el('span', { class: 'meter-fill', style: 'width:' + (clamp(purse, 0, max) / max * 100).toFixed(2) + '%' }));
-    for (t = 10; t < max; t += 10) {
-      bar.appendChild(el('span', { class: 'meter-ten' + (t >= purse ? ' is-beyond' : ''), style: 'left:' + (t / max * 100).toFixed(2) + '%' }));
+    if (lo < 0) {
+      bar.appendChild(el('span', { class: 'meter-fill is-below', style: 'left:' + at(purse) + ';width:' + ((0 - purse) / span * 100).toFixed(2) + '%' }));
+      bar.appendChild(el('span', { class: 'meter-zero', style: 'left:' + at(0) }));
+    } else bar.appendChild(el('span', { class: 'meter-fill', style: 'width:' + (clamp(purse, 0, max) / max * 100).toFixed(2) + '%' }));
+    for (t = lo + 10; t < max; t += 10) {
+      if (t === 0) continue;                       // the zero mark stands there
+      bar.appendChild(el('span', { class: 'meter-ten' + (t >= purse ? ' is-beyond' : ''), style: 'left:' + (lo < 0 ? at(t) : (t / max * 100).toFixed(2) + '%') }));
     }
     node.appendChild(bar);
-    node.appendChild(el('span', { class: 'meter-need' + (purse >= need ? ' is-met' : ''), style: 'left:' + (need / max * 100).toFixed(2) + '%' },
+    node.appendChild(el('span', { class: 'meter-need' + (purse >= need ? ' is-met' : ''), style: 'left:' + (lo < 0 ? at(need) : (need / max * 100).toFixed(2) + '%') },
       [el('span', { text: W.storeNeedTick(need) })]));
   }
-  function titles() { return A.ways(state.life).map(function (w) { return w.title; }); }
+  // The five situations in the place's own words (the engine's titles are not shown).
+  function titles() { var out = [], s; for (s = 0; s < 5; s++) out.push(W.title(s)); return out; }
   // way: one entry of ways(); o: { newDay, ghosts, hot, note, hollow }
   function wayRow(way, o) {
     var kin = state.life.kin, marks = el('span', { class: 'way-marks', 'aria-hidden': 'true' }), i, d, cls, prev = null, said = [];
@@ -695,7 +396,7 @@
     }
     var empty = !way.n && !(o.ghosts && o.ghosts.length);
     return el('div', { class: 'way-row' + (empty ? ' is-empty' : '') + (o.hot ? ' is-hot' : '') + (o.hollow ? ' is-hollow' : ''), 'data-sit': String(way.situation) }, [
-      el('span', { class: 'way-title', text: way.title }),
+      el('span', { class: 'way-title', text: W.title(way.situation) }),
       marks,
       el('span', { class: 'way-count', text: o.note || W.wayCount(way.h, way.n) }),
       said.length ? el('span', { class: 'vh', text: said.join(' ') }) : null      // what the marks say, deed by deed
@@ -725,7 +426,7 @@
   // ---- opening ------------------------------------------------------------------------------
 
   function fillStatic() {
-    var op = W.opening(), ul = $('opening-lines'), H = W.heads(), i;
+    var p = placeParams(), op = W.opening(p), ul = $('opening-lines'), H = W.heads(), i;
     setText('h-opening', op.title); setText('h-app', op.title); setText('opening-premise', op.premise); setText('begin', op.begin);
     clear(ul);
     for (i = 0; i < op.lines.length; i++) ul.appendChild(el('li', { text: op.lines[i] }));
@@ -738,14 +439,22 @@
     setText('to-chronicle', W.seeCount());
     setText('h-chronicle', W.chronicleHead()); setText('h-chron-house', H.house); setText('h-chron-valley', H.valley);
     setText('h-chron-range', H.range); setText('h-chron-last', H.lastDay); setText('h-chron-mattered', H.mattered);
-    setText('h-chron-became', H.became); setText('chron-became-sub', H.becameSub);
-    setText('again', W.again()); setText('again-same', W.againSame());
-    var ld = W.legendDay(), la = W.legendAfter(), lm = W.legendMarks(), fl = W.flowLabels();
+    setText('h-chron-became', H.became); setText('chron-became-sub', H.becameSub); setText('h-chron-afterword', H.afterword);
+    setText('again', W.again()); setText('again-same', W.againSame()); setText('other-place', W.otherPlace());
+    setText('opening-places-head', W.placesHead());
+    var ld = W.legendDay(), la = W.legendAfter(), lm = W.legendMarks(), fl = W.flowLabels(p), k = stockOf(p);
     setText('map-day-key-head', W.legendHead());
-    legendInto($('map-day-legend'), [['arrived', ld.arrived], ['turned', ld.turned], ['planned', ld.planned], ['home', ld.home], ['follows', ld.yours], ['diamond', ld.keeps], [null, W.mapHint(), 'is-hint']], false);
+    var dayKey = [['arrived', ld.arrived], ['turned', ld.turned], ['planned', ld.planned], ['home', ld.home], ['follows', ld.yours], ['diamond', ld.keeps]];
+    var afterKey = [['help', la.help], ['income', la.income], ['keeps', la.yours], ['newcomer', la.newcomer]];
+    if (k) {                                     // a place with a stock: its gauge, drawn as a bank begins (after the acts: the key keeps its lines)
+      dayKey.splice(4, 0, ['gauge', W.legendGauge(p), null, { level: k.start, top: k.max }]);
+      afterKey.push(['gauge', W.legendGauge(p), null, { level: k.start, top: k.max }]);
+    }
+    dayKey.push([null, W.mapHint(), 'is-hint']);
+    legendInto($('map-day-legend'), dayKey, false);
     foldKey();
     drawWaysLegend(false, 1);
-    legendInto($('map-after-legend'), [['help', la.help], ['income', la.income], ['keeps', la.yours], ['newcomer', la.newcomer]], true);
+    legendInto($('map-after-legend'), afterKey, true);
     legendInto($('chron-rows-legend'), [['held', lm.held], ['fell', lm.fell]], false);
     setText('flow-head', fl.head); setText('flow-rule', fl.rule);
     $('flow-strip').setAttribute('aria-label', fl.head);
@@ -764,21 +473,87 @@
     btn.setAttribute('aria-expanded', folded ? 'false' : 'true');
     $('map-hint').hidden = folded || state.phase !== 'choose';      // the hint is about choosing on the map
   }
-  function drawOpening() {
+  // held: the Opening is drawn again for a place just chosen. A number line that was showing then keeps
+  // its room, unseen, so that nothing above the choice of places moves under the pointer.
+  function drawOpening(held) {
+    drawChooser();
     drawOpeningMap();
-    var note = $('opening-valley');
+    var note = $('opening-valley'), keep = !!held && !note.hidden;
     if (state.fixedSeed !== null) {
       var n = null;
-      try { n = A.createLife(state.fixedSeed).seed; } catch (e) { n = null; }
-      if (n === null) state.fixedSeed = null;
+      try { n = A.createLife(state.fixedSeed, state.place).seed; } catch (e) { n = null; }
+      if (n === null) { state.hash = null; state.fixedSeed = null; }
       else note.textContent = W.valleyNo(n);
     }
-    note.hidden = state.fixedSeed === null;
+    var holding = state.fixedSeed === null && keep;
+    if (holding) {
+      if (!note.classList.contains('is-held')) note.classList.add('is-held');
+      note.setAttribute('aria-hidden', 'true');
+    } else if (note.classList.contains('is-held')) {
+      note.classList.remove('is-held');
+      note.removeAttribute('aria-hidden');
+    }
+    note.hidden = state.fixedSeed === null && !holding;
     drawOpeningPast();
   }
+  // The choice of places, in the cards' option style: a radio group named by its legend, the
+  // arrow keys moving through it. It is built once for the places there are (building it again
+  // would take the focus from the option the keys are on) and only set on each draw after that.
+  var chooserFor = '';
+  function drawChooser() {
+    var box = $('opening-places'), row = $('opening-places-row'), ids = placesHere(), i, input;
+    box.hidden = ids.length < 2;
+    if (ids.length < 2) return;
+    if (chooserFor !== ids.join(' ')) {
+      clear(row);
+      for (i = 0; i < ids.length; i++) row.appendChild(placeOption(ids[i]));
+      chooserFor = ids.join(' ');
+    }
+    for (i = 0; i < ids.length; i++) { input = $('place-' + ids[i]); if (input) input.checked = ids[i] === state.place; }
+  }
+  function placeOption(id) {
+    return el('label', { class: 'opt is-place' }, [
+      el('input', { type: 'radio', name: 'place', id: 'place-' + id, value: id }),
+      el('span', { class: 'opt-face' }, [
+        el('span', { class: 'opt-check', 'aria-hidden': 'true', html: CHECK_SVG }),
+        // its short label for the eye (five to a row), its name for a listener
+        el('span', { 'aria-hidden': 'true', text: W.placeLabel(id) }),
+        el('span', { class: 'vh', text: W.placeName(id) })
+      ])
+    ]);
+  }
+  // Choosing a place writes it into the address alone (#<place>, no seed), in place of what was there.
+  function choosePlace(id) {
+    if (state.view !== 'opening' || id === state.place || !hasOwn(P.byId, id)) return;
+    setPlace(id);
+    writeHash(id);
+    drawOpening(true);
+  }
+  // #<place>-<seed>: the text before the first hyphen is a place when this page has it, and the
+  // rest is a seed of that place. The valley is always there, so #valley-48213 and #valley-shoal-3
+  // keep their meaning (the valley, seeds 48213 and "shoal-3"). #<place> alone puts that place in hand
+  // with no seed fixed. A place may also be named by the word the page letters it with (#border-3 for
+  // the Watch: placeLabel). Any other hash fixes nothing.
+  var HASH_RE = /^#([a-z]+)(?:-([A-Za-z0-9-]+))?$/;
+  function placeKey(word) {
+    if (hasOwn(P.byId, word)) return word;
+    for (var i = 0; i < P.order.length; i++) if (W.placeLabel(P.order[i]).toLowerCase() === word) return P.order[i];
+    return null;
+  }
   function readHash() {
-    var m = /^#valley-([A-Za-z0-9-]+)$/.exec(String(window.location && window.location.hash || ''));
-    state.fixedSeed = m ? m[1] : null;
+    var m = HASH_RE.exec(String(window.location && window.location.hash || '')), key = m ? placeKey(m[1]) : null;
+    state.hash = key ? { place: key, seed: m[2] === undefined || m[2] === '' ? null : m[2] } : null;
+  }
+  // The address names the place in hand alone, with no new entry in the history (and none at all where
+  // the page cannot write its address).
+  function writeHash(id) {
+    try { window.history.replaceState(window.history.state, '', '#' + id); } catch (e) { /* the host's address stays */ }
+    state.hash = { place: id, seed: null };
+  }
+  // The hash's place is put in hand (its option chosen) and its seed fixed.
+  function applyHash() {
+    if (state.hash && state.hash.place !== state.place) setPlace(state.hash.place);
+    else fixFromHash();
   }
   function randomSeed() {
     var n;
@@ -791,7 +566,7 @@
 
   function beginLife(seedIn) {
     cancelTimers();
-    var life = A.createLife(seedIn);
+    var life = A.createLife(seedIn, state.place);
     state.life = life; state.seed = life.seed;
     state.choices = []; state.result = null; state.youMark = null; state.knowOpen = {}; state.mapFolded = false;
     state.future = null; state.after = null; state.job = null; state.verdict = null; state.saved = false;
@@ -870,6 +645,8 @@
       var total = el('span');
       signedInto(total, W.dayTotal(r.gained, r.purse, r.need));
       node.appendChild(total);
+      // where the town pays for the ring: what it paid at your ties today, said with the total
+      if (townOf(state.life.params)) node.appendChild(el('span', { class: 'status-town', text: ' ' + W.dayTown(r.results, state.life.params) }));
     }
   }
   // Where the day's button sits in the page, which is the order of reading and of the Tab key
@@ -928,25 +705,31 @@
     legendInto($('ways-legend'), items, false);
   }
   function drawDayMap() {
-    var t = state.today, r = state.result, hands = {}, i, id, x;
-    var items = t.neighbours.map(function (nb, k) {          // the same, for the map's text alternative
+    var t = state.today, r = state.result, hands = {}, i, id, x, p = state.life.params, k = stockOf(p), closed = state.phase !== 'choose' && !!r;
+    var items = t.neighbours.map(function (nb, n) {          // the same, for the map's text alternative
       var arcs = 0, q, fl = state.follow && state.follow[nb.id];
       for (q = 0; fl && q < 5; q++) if (fl[q]) arcs++;
-      return { name: nb.name, kin: nb.kin, plan: state.pending[nb.id], result: state.phase === 'revealed' && r ? r.results[k] : null,
-               arcs: arcs, keeps: !!(state.keeps && state.keeps[nb.id]) };
+      var item = { name: nb.name, kin: nb.kin, plan: state.pending[nb.id], result: state.phase === 'revealed' && r ? r.results[n] : null,
+                   arcs: arcs, keeps: !!(state.keeps && state.keeps[nb.id]) };
+      // a place with a stock: the bank on the tie, as the map's gauge shows it
+      if (k) item.bank = state.phase === 'revealed' ? { before: r.results[n].stock, after: r.results[n].stockAfter } : { level: closed ? r.results[n].stockAfter : nb.stock };
+      return item;
     });
     if (state.phase === 'choose') {
       for (i = 0; i < ORDER.length; i++) { id = ORDER[i]; if (typeof state.pending[id] === 'boolean') hands[id] = { plan: state.pending[id] }; }
     } else if (state.phase === 'revealed') {
       for (i = 0; i < r.results.length; i++) { x = r.results[i]; hands[x.id] = { revealed: true, arrived: x.arrived, lost: x.lost, they: x.they }; }
     }
-    drawMap('map-day', 'day', {
+    var o = {
       names: names(), kin: state.life.kin, follow: state.follow, keeps: state.keeps, hands: hands,
       kinWith: state.phase === 'revealed' ? r.kinWith : null,
       hot: state.hot, click: state.phase === 'choose',
       crop: !mqWide.matches,                     // a phone: cut above the ridge, so that the first card is on the first screen
-      alt: W.mapAltDay(t.day, state.phase, items)
-    });
+      alt: W.mapAltDay(t.day, state.phase, items, p)
+    };
+    // the banks on your ties: this morning's while choosing, as the closed day left them after
+    if (k) o.gauge = { top: k.max, levels: levelsOf(t.neighbours, closed ? r.results : null) };
+    drawMap('map-day', 'day', o);
   }
 
   // cards -------------------------------------------------------------------------------------
@@ -1024,6 +807,19 @@
     ]);
     return [det, now];
   }
+  // The bank on a card's tie, in its head: the gauge and a short caption for the eye, a sentence for
+  // a listener. Before the reveal the level this morning (today().neighbours[i].stock), after it
+  // what the day did (results[i].stock to stockAfter). null where the place has no stock.
+  function bankNode(n, r) {
+    var p = state.life.params, k = stockOf(p), words;
+    if (!k) return null;
+    words = r ? W.bankDay(r.stock, r.stockAfter, p, false) : W.bankNow(n.stock, p);
+    return el('span', { class: 'bank', 'data-bank': String(n.id) }, [
+      el('span', { class: 'bank-gauge', 'aria-hidden': 'true', html: S.gauge({ level: r ? r.stockAfter : n.stock, top: k.max }) }),
+      el('span', { class: 'bank-text', 'aria-hidden': 'true', text: words.text }),
+      el('span', { class: 'vh', text: words.say })
+    ]);
+  }
   function cardNode(n, i, r, after) {
     var cardNames = W.cardName(n), id = n.id, revealed = !!r, choice, front, back = null, y, heads, know, since, numNode;
     front = el('div', { class: 'card-face card-front' });
@@ -1032,21 +828,22 @@
         el('h3', { class: 'card-title', id: 'card-title-' + id, text: cardNames[0] }),
         cardNames[1] ? el('p', { class: 'card-sub', text: cardNames[1] }) : null
       ]),
+      bankNode(n, r),                                // a place with a stock: the bank between you, beside the bearing
       el('span', { class: 'bearing' }, [             // where the holding lies from yours: the letters, and the words for a listener
         el('span', { 'aria-hidden': 'true', text: W.bearingShort(i) }),
         el('span', { class: 'vh', text: W.bearingSay(i) })
       ])
     ]));
     if (!revealed) {
-      front.appendChild(el('p', { class: 'card-yesterday', text: W.yesterday(n.yesterday) }));
-      front.appendChild(el('p', { class: 'card-way', text: W.wayHere(n.situationTitle) }));
+      front.appendChild(el('p', { class: 'card-yesterday', text: W.yesterday(n.yesterday, state.life.params) }));
+      front.appendChild(el('p', { class: 'card-way', text: W.wayHere(W.title(n.situation)) }));
       choice = state.pending[id];
     } else {
-      var rv = W.reveal(r);
+      var rv = W.reveal(r, state.life.params);
       numNode = el('span', { class: 'result-num' });
       signedInto(numNode, rv.number);
       front.appendChild(el('div', { class: 'card-result' }, [
-        el('span', { class: 'result-glyph', html: exchangeGlyph(r) }),
+        el('span', { class: 'result-glyph', html: S.glyph(sheetDef(), r) }),
         numNode,
         // named "Why? The Maren house": its own words first, then the card's title
         whyButton(String(id), { 'data-why': String(id), id: 'why-' + id, 'aria-labelledby': 'why-' + id + ' card-title-' + id,
@@ -1145,6 +942,8 @@
     for (i = 0; i < r.kinWith.length; i++) {
       e = r.kinWith[i];
       row = el('div', { class: 'else-line' }, [el('p', { id: 'else-line-' + e.id, text: W.elsewhere(e) })]);
+      // a place with a stock: the bank between them, drawn on the map as a gauge, said for a listener
+      if (stockOf(state.life.params) && typeof e.stockAfter === 'number') row.appendChild(el('span', { class: 'vh', text: W.bankDay(e.stock, e.stockAfter, state.life.params, true).say }));
       body.appendChild(row);
       if (e.why.source.type !== 'you') continue;
       key = 'kin-' + e.id; open = !!state.thirdOpen[key];
@@ -1285,8 +1084,21 @@
     if (skipNow || mqStill.matches) finishAfter();
     else { every(tickAfter, 100); tickAfter(); pump(); }
   }
+  // The strip's top: room for the largest flow the place allows (hands can beat the luck of the
+  // crossing a little; a stock's mean level can rise to its top against its start).
+  function flowTop(p) {
+    if (p.FLOW_KIND === 'stock') return p.STOCK.max / p.STOCK.start;
+    if (p.FLOW_KIND === 'hands') return Math.max(1.05, 1 / (1 - p.FOG));
+    return 1.05;
+  }
+  // A season on the worse side of the line, for the place: under it where the place holds
+  // (CHARTER 'holds'), at or over it where the place is better off when the flow fails ('breaks').
+  function flowSide(p, flow) {
+    if (p.CHARTER === 'breaks') return flow >= p.HOLD_LINE ? ' is-over' : '';
+    return flow < p.HOLD_LINE ? ' is-under' : '';
+  }
   function buildAfter() {
-    var fl = W.flowLabels(), strip = $('flow-strip'), axis = $('flow-axis'), i, col;
+    var p = state.life.params, fl = W.flowLabels(p), top = flowTop(p), strip = $('flow-strip'), axis = $('flow-axis'), i, col;
     setText('after-one', W.oneFuture(state.job.futures));
     setText('after-season', W.seasonCount(1));
     drawAfterMap();
@@ -1295,12 +1107,13 @@
       col = el('span', { class: 'flow-col is-waiting' + (i > 20 ? ' is-late' : ''), id: 'flow-col-' + i }, [el('i')]);
       strip.appendChild(col);
     }
-    strip.appendChild(el('span', { class: 'flow-half', style: 'bottom:' + (0.5 / 1.05 * 100).toFixed(2) + '%' }, [el('span', { text: fl.half })]));
+    strip.appendChild(el('span', { class: 'flow-half', style: 'bottom:' + (p.HOLD_LINE / top * 100).toFixed(2) + '%' }, [el('span', { text: fl.half })]));
     axis.appendChild(el('span', { style: 'grid-column:1', text: '1' }));
     axis.appendChild(el('span', { style: 'grid-column:10', text: '10' }));
     axis.appendChild(el('span', { style: 'grid-column:20', text: '20' }));
     axis.appendChild(el('span', { class: 'flow-late', style: 'grid-column:21 / 31', text: fl.late }));
     strip.setAttribute('aria-label', fl.head);       // the strip's own numbers follow once it has played (finishAfter)
+    setText('flow-head', fl.head); setText('flow-rule', fl.rule);
     var ticker = $('ticker');
     clear(ticker);
     ticker.className = 'ticker';
@@ -1313,13 +1126,13 @@
     $('to-chronicle').hidden = true; $('to-chronicle').disabled = true;
   }
   // A name on the Afterwards map is lettered after the sheet is drawn (newcomers rename a
-  // holding): the same room is kept for it as mapSVG keeps on the other maps (see nameRoom).
+  // holding): the same room is kept for it as AYSheet.map keeps on the other maps (see nameRoom).
   function fitAfterName(node, id, text) {
     var kind = mapKinds['map-after'], g, L, room;
     if (!kind || (id !== 2 && id !== 6)) return;            // only these two are lettered beside the holding
-    g = geo(kind); L = lettered(g.L, mapUps['map-after']);
-    room = nameRoom(L, labelAt(g, L, id, id === state.life.kin), text);
-    if (room) { node.setAttribute('textLength', f(room)); node.setAttribute('lengthAdjust', 'spacingAndGlyphs'); }
+    g = S.geo(sheetDef(), kind); L = S.lettered(g.L, mapUps['map-after']);
+    room = S.nameRoom(L, S.labelAt(g, L, id, id === state.life.kin), text);
+    if (room) { node.setAttribute('textLength', S.f(room)); node.setAttribute('lengthAdjust', 'spacingAndGlyphs'); }
     else { node.removeAttribute('textLength'); node.removeAttribute('lengthAdjust'); }
   }
   function drawSeason30(upTo) {                  // the map as it stands in season `upTo` (1..30)
@@ -1339,6 +1152,18 @@
         fitAfterName(node, j, node.textContent);
       }
       node = $('af-sub-' + j); if (node) node.textContent = j === life.kin && !isNew ? labels.sister : '';
+    }
+    drawBanks30(upTo);
+  }
+  // A place with a stock: each of the sixteen gauges as its bank stood at the end of season `upTo`
+  // (runFuture().seasons[k].ties, in the engine's order of ties, AfterYou.tieList).
+  function drawBanks30(upTo) {
+    var k = stockOf(state.life.params), ties = state.future.seasons[upTo - 1].ties, kind = mapKinds['map-after'], t, key, node;
+    if (!k || !ties || !kind) return;
+    for (t = 0; t < A.tieList.length; t++) {
+      key = A.tieList[t][0] + '-' + A.tieList[t][1];
+      node = $('af-gauge-' + key);
+      if (node) node.setAttribute('d', S.gaugeD(sheetDef(), kind, key, { level: ties[t], top: k.max }));
     }
   }
   // The resting map: whose ways each house runs after the last Looking-Round, which is what
@@ -1367,9 +1192,10 @@
       who = j === 0 ? W.heir(true) : j === kin && !isNew ? W.kin(true) : W.House(h.name);
       list.appendChild(el('li', { text: W.houseAtEnd(who, h.income, Math.round(h.helpRate * 16), fut.finalWay[j] === 0 || fut.finalWay[j] === kin, isNew) }));
     }
+    if (stockOf(state.life.params) && S.ties) list.appendChild(el('li', { text: W.banksAtEnd(S.ties, state.life.params) }));   // and the banks
   }
   function showSeasons(upTo) {                   // bring the page up to season `upTo`
-    var a = state.after, fut = state.future, ticker = $('ticker'), s, col, flow, ln;
+    var a = state.after, fut = state.future, ticker = $('ticker'), p = state.life.params, top = flowTop(p), s, col, flow, ln;
     if (!a || upTo <= a.shown) return;
     // A listener is told only the lines about the reader's own ways, and only as the seasons
     // arrive by the clock: never the whole list at once (Skip, reduced motion, a tab left behind).
@@ -1378,8 +1204,8 @@
       flow = fut.seasons[s - 1].flow;
       col = $('flow-col-' + s);
       if (col) {
-        col.className = 'flow-col' + (s > 20 ? ' is-late' : '') + (flow < 0.5 ? ' is-under' : '');
-        col.firstChild.style.height = (clamp(flow, 0, 1.05) / 1.05 * 100).toFixed(1) + '%';
+        col.className = 'flow-col' + (s > 20 ? ' is-late' : '') + flowSide(p, flow);
+        col.firstChild.style.height = (clamp(flow, 0, top) / top * 100).toFixed(1) + '%';
       }
       while (a.told < a.lines.length && a.lines[a.told].season <= s) {
         ln = a.lines[a.told++];
@@ -1418,9 +1244,11 @@
     skip.hidden = true; skip.disabled = true;
     $('after-now').hidden = true;                    // at rest the whole list is there to read
     ticker.className = 'ticker is-done';             // and shows whole, from its first line
-    ticker.removeAttribute('tabindex');
-    ticker.scrollTop = 0;
-    $('flow-strip').setAttribute('aria-label', W.flowAlt(state.future));
+    // (where the style sheet keeps it a scroll box at rest, a place whose futures tell many changes of way,
+    // it stays one that the keys can reach, at its newest lines)
+    if (ticker.scrollHeight > ticker.clientHeight + 1) ticker.scrollTop = ticker.scrollHeight;
+    else { ticker.removeAttribute('tabindex'); ticker.scrollTop = 0; }
+    $('flow-strip').setAttribute('aria-label', W.flowAlt(state.future, state.life.params));
     drawHousesAtEnd();
     for (i = 0; i < timeouts.length; i++) clearTimeout(timeouts[i]);      // the pump restarts in large slices
     timeouts = [];
@@ -1536,23 +1364,22 @@
     $('scale-end-best').className = 'scale-end' + (db < 0 ? ' at-end' : '') + (clash ? ' is-low' : '');
     node.className = 'scale' + (clash ? ' has-low' : '');
   }
-  function sealSVG() {
-    var s = '<svg width="76" height="76" viewBox="0 0 76 76" aria-hidden="true" focusable="false">', i, a;
-    s += '<circle class="seal-ring" cx="38" cy="38" r="35"/><circle class="seal-ring-thin" cx="38" cy="38" r="28.5"/>';
-    for (i = 0; i < 24; i++) {
-      a = i / 24 * Math.PI * 2;
-      s += '<path class="seal-tick" d="M' + f(38 + Math.cos(a) * 30) + ' ' + f(38 + Math.sin(a) * 30) + 'L' + f(38 + Math.cos(a) * 33.5) + ' ' + f(38 + Math.sin(a) * 33.5) + '"/>';
-    }
-    s += '<rect class="seal-parcel" x="22" y="27" width="32" height="22"/><rect class="seal-house" x="25" y="30" width="8" height="8"/>';
-    s += '<path class="seal-check" d="M35 41l5 5l10 -12"/>';
-    return s + '</svg>';
+  // A seal withheld by the season replay (a place whose rules replay the last season): one plain line
+  // under the mark it qualifies, in the place's words, made only then (the page at rest is as before);
+  // the season entry's own numbers are never shown.
+  // Shown only where the seal would otherwise have been earned: the house kept, the mark clear and no
+  // last-day clause withholding it.
+  function seasonLine(v) {
+    var old = $('chron-season'), noise = $('chron-noise'), s = v.seal;
+    if (old) old.parentNode.removeChild(old);
+    if (s && s.wonOnSeason && s.houseKept && s.markClear && !s.boughtOnLastDay && !s.lastDayCost && !s.wonOnLastDay) noise.parentNode.insertBefore(el('p', { id: 'chron-season', text: W.seasonRests(v) }), noise.nextSibling);
   }
   function showChronicle() {
     var v = state.verdict, life = state.life, i, lines, rows, list, seal, rl, ex;
     if (!v || !life || state.view !== 'afterwards') return;
     if (!state.saved) {
       state.saved = true;
-      saveLife({ seed: life.seed, kept: !!v.houseKept, purse: v.purse, need: v.need, mark: v.mark, seal: !!(v.seal && v.seal.earned) });
+      saveLife({ place: state.place, seed: life.seed, kept: !!v.houseKept, purse: v.purse, need: v.need, mark: v.mark, seal: !!(v.seal && v.seal.earned) });
     }
     setText('chron-valley', W.valleyNo(life.seed));
     signedInto($('chron-house'), W.houseLine(v));
@@ -1561,11 +1388,12 @@
     signedInto($('chron-mark'), W.markLine(v));
     setText('chron-mark-means', W.markMeans(v));
     setText('chron-noise', W.markNoise(v));
+    seasonLine(v);
     rl = W.rowLabels(); rows = $('chron-rows'); clear(rows);
     rows.appendChild(marksRow(rl.you, v.held));
     rows.appendChild(marksRow(rl.old, v.baseline.held));
     rows.appendChild(el('p', { class: 'small', text: W.rowsCaption(v) }));
-    ex = W.rowsExplain(v);
+    ex = W.rowsExplain(v, life.params);
     setText('chron-explain-1', ex[0]); setText('chron-explain-2', ex[1]);
     drawScale(v);
     setText('chron-range', W.rangeLine(v));
@@ -1574,7 +1402,7 @@
     setText('chron-last', v.lastDay ? W.lastDayLine(v, life.kin) : '');
     seal = $('chron-seal'); clear(seal);
     if (v.seal && v.seal.earned) {
-      seal.appendChild(el('span', { html: sealSVG() }));
+      seal.appendChild(el('span', { html: S.seal(sheetDef()) }));
       seal.appendChild(el('p', { text: W.seal() }));
       seal.hidden = false;
     } else seal.hidden = true;
@@ -1582,19 +1410,50 @@
     list = $('chron-became'); clear(list);
     lines = W.became(state.future, life.kin);
     for (i = 0; i < lines.length; i++) list.appendChild(el('li', { class: i === lines.length - 1 ? 'is-close' : null, text: lines[i] }));
-    drawPast('chron-past', 'chron-past-list');
+    drawPast('chron-past', 'chron-past-list', PAST_IN_CHRONICLE);
+    setText('chron-afterword', W.afterword());
+    $('other-place').hidden = !choosing();
     showView('chronicle');
     layoutScale();                               // again, now that the view has a width
+    // where the style sheet keeps the list of your ways' fate in a scroll box (a place whose futures tell many
+    // changes of way), it is one the keys can reach, named by its heading, and it shows its closing lines
+    if (list.scrollHeight > list.clientHeight + 1) {
+      list.setAttribute('tabindex', '0'); list.setAttribute('aria-labelledby', 'h-chron-became');
+      list.scrollTop = list.scrollHeight;
+    } else if (list.getAttribute('tabindex') !== null) { list.removeAttribute('tabindex'); list.removeAttribute('aria-labelledby'); }
   }
 
-  // ---- reload: a Life is rebuilt from its seed and its choices ------------------------------
+  // From the Chronicle back to the Opening, to choose another place (the Life just lived is done
+  // and stored); the focus goes to the place in hand among the choices.
+  function goOpening() {
+    cancelTimers();
+    state.life = null; state.seed = null; state.choices = []; state.result = null;
+    state.future = null; state.after = null; state.job = null; state.verdict = null;
+    applyHash();                                 // a hash changed during the Life is obeyed now, as on a load
+    drawOpening();
+    showView('opening');
+    var on = $('place-' + state.place);
+    if (on && choosing()) focusOn(on);
+  }
+
+  // ---- reload: a Life is rebuilt from its place, its seed and its choices -------------------
 
   function snapshot() {
-    return { seed: state.seed, choices: state.choices, pending: state.pending, view: state.view, phase: state.phase, mapFolded: state.mapFolded };
+    return { place: state.place, seed: state.seed, choices: state.choices, pending: state.pending, view: state.view, phase: state.phase, mapFolded: state.mapFolded };
   }
   function restore(data) {
-    if (!data || data.seed === null || data.seed === undefined || !data.view || data.view === 'opening') return false;
-    var life = A.createLife(data.seed), list = Array.isArray(data.choices) ? data.choices : [], i, c, k;
+    // a snapshot of the Opening keeps the place chosen there, unless the address names one
+    if (data && data.view === 'opening') {
+      if (typeof data.place === 'string' && hasOwn(P.byId, data.place) && !state.hash && data.place !== state.place) setPlace(data.place);
+      return false;
+    }
+    if (!data || data.seed === null || data.seed === undefined || !data.view) return false;
+    // the snapshot's place (none: the valley, as before there were places); a place this page has
+    // no words for cannot be rebuilt
+    var place = data.place === undefined ? 'valley' : data.place;
+    if (typeof place !== 'string' || !hasOwn(P.byId, place)) return false;
+    if (place !== state.place) setPlace(place);
+    var life = A.createLife(data.seed, state.place), list = Array.isArray(data.choices) ? data.choices : [], i, c, k;
     var before = null, follow = null, keeps = null, result = null;
     state.mapFolded = !!data.mapFolded;
     state.life = life; state.seed = life.seed; state.choices = []; state.youMark = null; state.result = null;
@@ -1669,6 +1528,11 @@
     $('to-chronicle').addEventListener('click', showChronicle);
     $('again').addEventListener('click', function () { if (state.view === 'chronicle' && !fresh()) beginLife(randomSeed()); });
     $('again-same').addEventListener('click', function () { if (state.view === 'chronicle' && !fresh() && state.seed !== null) beginLife(state.seed); });
+    $('other-place').addEventListener('click', function () { if (state.view === 'chronicle' && !fresh()) goOpening(); });
+    $('opening-places').addEventListener('change', function (e) {
+      var t = e.target;
+      if (t && t.type === 'radio' && t.name === 'place' && t.checked) choosePlace(t.value);
+    });
 
     var cards = $('cards');
     cards.addEventListener('change', function (e) {
@@ -1737,7 +1601,7 @@
       if (state.view === 'day' && state.life) placeActions(true);
     });
     if (window.addEventListener) {
-      window.addEventListener('hashchange', function () { readHash(); if (state.view === 'opening') drawOpening(); });
+      window.addEventListener('hashchange', function () { readHash(); if (state.view === 'opening') { applyHash(); drawOpening(); } });
       window.addEventListener('resize', function () {
         refitMap();                                               // the sheet is redrawn at its other size when its box crosses over
         if (state.view === 'chronicle') layoutScale();
@@ -1752,15 +1616,19 @@
     if (started) return;
     started = true;
     try { if (!document.documentElement.lang) document.documentElement.lang = 'en'; } catch (e) { /* the host's to set */ }
+    W.use(state.place);                          // the words of the place in hand, before any is shown
+    markPlace();                                 // and its colours
     fillStatic();
     state.lives = loadLives();
     readHash();
+    applyHash();                                 // the hash's place in hand, its seed fixed
     wire();
     drawOpening();
-    var ok = false;
+    var ok = false, had = state.place;
     try { ok = restore(data); } catch (e) { ok = false; }
     if (!ok) {
       state.life = null; state.seed = null; state.choices = [];
+      if (state.place !== had) drawOpening();    // a snapshot of another place that could not be rebuilt
       showView('opening', true);
     }
   }
