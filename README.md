@@ -6,7 +6,9 @@ The Opening offers five places, played the same way with their own rules and wor
 
 ## Play it
 
-The game is plain files with no build step. The commands below use Python 3 only as a local web server; any static web server and any port will do.
+Play it in a browser at **https://blessedtakss.github.io/after-you/**. That address serves the version last put on it, normally the newest tag (see [Versions](#versions)), and the address option described below works there too, for example https://blessedtakss.github.io/after-you/#bridges-4. Finished lives are kept in that browser only.
+
+To run it from your own copy instead: the game is plain files with no build step. The commands below use Python 3 only as a local web server; any static web server and any port will do.
 
 ```bash
 git clone https://github.com/blessedtakss/after-you
@@ -45,6 +47,7 @@ The three alternative looks open the same way, at `variants/a/preview.html`, `va
 | `variants/a/` | Alternative look A, "Tally stick": the harvest as a notched stick, with four house cards. |
 | `variants/b/` | Alternative look B, a surveyor's sheet with a map of the valley. The main page grew from this one and is a later, larger revision of it. |
 | `variants/c/` | Alternative look C, two banks and one ford: the neighbours on the far bank, your house on the near one. |
+| `tools/pages.sh` | Puts a tagged version on the web address above, through the `gh-pages` branch: its `preview.html` as the front page and the files that page loads, nothing else. |
 
 The variants are three alternative looks built for the valley alone. Each folder holds its own `index.html`, `preview.html`, `app.js`, `words.js` and `page-smoke.js`, plus a copy of the v0.1.0 `engine.js`. The top-level engine has since gained the four new places; it plays the valley exactly as the v0.1.0 engine does, so the variants are unchanged, but their engine copies are no longer the same file.
 
@@ -81,6 +84,8 @@ The only thing the page loads from the network is a Google Fonts stylesheet (Bar
 ## Versions
 
 v0.1.0 is the first playable slice, the valley alone, published 22 November 2026. v0.2.0 adds the four new places (the Banks, the Border, the Bridges and the Saltmarket) and was published on 26 November 2026. v0.2.1, the same day, writes the minus sign as a plain-text escape so negative numbers show correctly when the page is served without a declared encoding; nothing the page shows changes, and it is the link's third published version. It also keeps the checks (`checks/`) and the design notes (`docs/`). Each tag holds the game exactly as it was published.
+
+The web address serves the `gh-pages` branch, which holds only the built site. After a new version's tag is pushed, `tools/pages.sh --push` builds the site from the newest `vX.Y.Z` tag and pushes it to that branch; without `--push` it only shows what it would put up and whether that differs from what is there. Naming a tag, as in `tools/pages.sh v0.2.0 --push`, puts that version up instead, for example to go back to it. Work on `main` that is not tagged never goes live, and the site's `version.txt` names the tag and commit it is serving. The alternative looks are not on the site: served from the same address they would share, and shorten, the main page's list of earlier lives.
 
 ## Licence
 

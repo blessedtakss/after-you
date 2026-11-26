@@ -39,7 +39,7 @@ In the order they were written.
 
 | Document | What it is | Written |
 |---|---|---|
-| [first-version/atlas.md](first-version/atlas.md) | A scenario atlas: 47 real situations shaped like the prisoner's dilemma (history, war, business, finance and more), each with a twist a game could use, and ten recurring twist dimensions. | 2026-11-22 12:16 |
+| [first-version/atlas.md](first-version/atlas.md) | A scenario atlas: 37 situations shaped like the prisoner's dilemma, all real but the last two, which come from science fiction (history, war, business, finance and more), each with a twist a game could use, and ten recurring twist dimensions. | 2026-11-22 12:16 |
 | [first-version/design.md](first-version/design.md) | The game concept that became After You: name candidates, pitch, four pillars, core loop, dilemma engine, scenario system, opponents, roadmap, open decisions and a runner-up direction. | 2026-11-22 12:41 |
 | [first-version/SPEC.md](first-version/SPEC.md) | The rules of the first playable slice: the model, founders, the Life, Looking-Round, heir and Afterwards, winter need, keyed randomness and gates G1 to G10, under the lead's "Revision 3" note. | 2026-11-22 13:37 |
 | [first-version/UI-SPEC.md](first-version/UI-SPEC.md) | The page specification (revision 2): files, test hooks, the five views, the plain-words rule, technical rules, look, and the self-check without a browser. | 2026-11-22 17:55 |
