@@ -7,7 +7,7 @@
 (function (root) {
   'use strict';
 
-  var MINUS = '−';
+  var MINUS = '\u2212';   // the minus sign, escaped so the file stays ASCII and reads the same in any encoding
   var W = {};
 
   // ---- numbers ------------------------------------------------------------------------------

@@ -9,7 +9,7 @@
   'use strict';
 
   var W = {};
-  var MINUS = '−';
+  var MINUS = '\u2212';   // the minus sign, escaped so the file stays ASCII and reads the same in any encoding
   var DAYS = 12, SEASONS = 30;
 
   // ---- names and numbers ------------------------------------------------------------------

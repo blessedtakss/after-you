@@ -66,6 +66,10 @@ This takes about two and a half minutes. Its last line reports the time against 
 
 `smoke.js` still runs against this engine, in about a second, but it only prints raw engine data and checks nothing, so it is a demonstration and not a test. Its output contains spoilers, and so does the output of `harness.js`. Each variant has its own `page-smoke.js`, run the same way from inside that variant's folder; these took 24 to 35 seconds each and end with `PASS` (a and b) or `OK` (c). All of these checks passed on the v0.1.0 files.
 
+## Checks
+
+The `checks/` folder keeps the further checks that version 2 was built with, so that later changes can be held to them. `checks/run-all.sh` runs every page check on the working tree and compares the valley's sentences, its page and maps, the words of every place, every drawing of every place's map and a whole Life's page and maps in every place line for line against a tagged version (v0.2.0 unless another is named), and checks that `preview.html` is `index.html` as the host wraps it (`python3 checks/page/preview.py --write` rebuilds it after a page change); it takes about eight minutes and ends with `RUN-ALL: PASS`. `checks/engine/` holds the proof that the engine still plays the valley exactly as v0.1.0 did and each place's design gates, and `checks/browser/` two tools to paste into the page in a browser. What each check proves, how to run it, how long it takes, what passing looks like and which to run after which kind of change are in [checks/README.md](checks/README.md); the design notes behind the places are in [docs/README.md](docs/README.md). The checks write their outputs to `checks/out/`, which git ignores.
+
 ## How it works, briefly
 
 Underneath, the game is an iterated prisoner's dilemma among eight houses; the full model is set out in the header comment of `engine.js`, which contains spoilers. There are no dependencies and no build step: the page loads plain scripts in order, the model in `engine.js`, the sentence functions in `words.js`, one file of words for each place in `places/`, the map drawing in `sheet.js` and the page logic in `app.js`.
@@ -76,7 +80,7 @@ The only thing the page loads from the network is a Google Fonts stylesheet (Bar
 
 ## Versions
 
-v0.1.0 is the first playable slice, published 22 November 2026. The four new places are not yet in a tagged version.
+v0.1.0 is the first playable slice, the valley alone, published 22 November 2026. v0.2.0 adds the four new places (the Banks, the Border, the Bridges and the Saltmarket) and was published on 26 November 2026. v0.2.1, the same day, writes the minus sign as a plain-text escape so negative numbers show correctly when the page is served without a declared encoding; nothing the page shows changes, and it is the link's third published version. It also keeps the checks (`checks/`) and the design notes (`docs/`). Each tag holds the game exactly as it was published.
 
 ## Licence
 
