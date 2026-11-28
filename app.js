@@ -140,6 +140,62 @@
     timeouts = []; intervals = [];
   }
 
+  // ---- motion and sound (motion.js, sound.js): told of the page's moments, never needed ------
+  // Each module that boots is told each moment (cue) after the page has drawn it, synchronously, with
+  // only what the page shows of it; with none booted (absent, declined or failed) every cue returns at
+  // once, builds nothing and reads no clock. data: an object, or a function that makes it (called only
+  // when a module listens). quiet: set states directly, with no transient and no sound (a restore sets
+  // it for every cue). The cues and what each carries (besides quiet):
+  //   place      { place }                           a place put in hand (markPlace)
+  //   map        { id, mode, kind, crop, day, phase }  a map drawn (drawMap): its box's id, its mode and sheet,
+  //                                                   whether a phone's crop cuts it; day and phase the day
+  //                                                   map's (today's number, 'choose' | 'revealed' | 'season'),
+  //                                                   null on the other maps
+  //   view       { view }                            a view shown (showView; quiet as the view was shown)
+  //   opening    { changed }                         the Opening drawn: first paint, a place chosen (changed),
+  //                                                   the way back from the Chronicle
+  //   day        { day }                             a day opens (Begin, Next day)
+  //   plan       { id, send }                        a choice made for one neighbour
+  //   reveal     { day, lanes: [{ id, arrived, lost, they }], kin, kinWith: [{ id, kinSent, theySent }],
+  //                bank: { top, levels: { id: [stock, stockAfter] } } or null, town, map, cards }
+  //                                                   the day closed: your four ties in the engine's order, the
+  //                                                   sister's dealings, the banks on your ties where the place
+  //                                                   has a stock, whether the town pays for the ring, whether
+  //                                                   the day's map and the cards are in the page (not folded away)
+  //   seasonEnd  { day, kin, followBefore, followAfter, keepsBefore, keepsAfter, kinCount, map }
+  //                                                   the season's end opened: the map's habits learned from you
+  //                                                   ({ id: [bool x 5] }) and the neighbours running your ways
+  //                                                   ({ id: bool }) before and after, how many of the sister's
+  //                                                   habits came from you (the page's "N of 5")
+  //   leaving    {}                                  Leaving shown
+  //   afterStart { jump }                            the Afterwards begins (jump: it ends at once)
+  //   season     { to, byClock, yours, isNew, strip, told, lines }
+  //                                                   the Afterwards brought up to season `to` (byClock: one
+  //                                                   season by the clock, not several at once): whose ways
+  //                                                   each of the eight houses runs and which is new there
+  //                                                   ([bool x 8]), the strip's height there (0 to 1), and the
+  //                                                   ticker's lines added ([{ yours }] and their <li> nodes)
+  //   afterEnd   { finalYours }                      the Afterwards at rest: whose ways each house runs [bool x 8]
+  //   count      {}                                  the way on to the Chronicle is ready
+  //   chronicle  {}                                  the Chronicle shown
+  //   flip       { on }                              a card turned over (on) or back
+  //   still      {}                                  reduced motion turned on while the page is open
+  var FX = [], fxQuiet = false;
+  function cue(name, data) {
+    if (!FX.length) return;                       // nothing listening: nothing built, no clock read
+    var d, i;
+    try { d = typeof data === 'function' ? data() : (data || {}); } catch (e) { return; }
+    d.quiet = !!(d.quiet || fxQuiet);
+    for (i = 0; i < FX.length; i++) { try { FX[i].cue(name, d); } catch (e) { /* the page never needs them */ } }
+  }
+  function bootFx() {
+    var mods = [window.AYMotion, window.AYSound], i, ctx = { doc: document, hidden: pageHidden, sheet: sheetDef, label: W.soundWord,
+      still: function () { return mqStill.matches; }, place: function () { return state.place; } };
+    FX = [];
+    for (i = 0; i < mods.length; i++) { try { if (mods[i] && mods[i].boot && mods[i].boot(ctx)) FX.push(mods[i]); } catch (e) { /* off */ } }
+  }
+  function plainCopy(o) { return o === null || o === undefined ? null : JSON.parse(JSON.stringify(o)); }      // a module never holds the page's own
+
   // ---- views --------------------------------------------------------------------------------
 
   var HEADS = { opening: 'h-opening', day: 'h-day', leaving: 'h-leaving', afterwards: 'h-after', chronicle: 'h-chronicle' };
@@ -172,6 +228,7 @@
     if ($('h-app')) $('h-app').hidden = name === 'opening';      // the opening shows the page's h1 itself
     refitMap();                                  // the view's map can now be measured
     if (!quiet) { toTop(); focusOn($(HEADS[name])); }
+    cue('view', { view: name, quiet: !!quiet });
   }
 
   // ---- earlier lives (localStorage, optional) -----------------------------------------------
@@ -257,6 +314,7 @@
   // The style sheet's colours follow the place in hand: its token blocks are chosen by this mark.
   function markPlace() {
     try { document.documentElement.setAttribute('data-place', state.place); } catch (e) { /* no page to mark */ }
+    cue('place', { place: state.place });
   }
   // The stock of the place in hand (its rules' STOCK), or null: where there is one, every tie carries
   // a level, drawn as a gauge (sheet.js) and said by AYWords.bankNow and bankDay.
@@ -294,6 +352,10 @@
     mapUps[id] = S.letterUp(kind, boxWidth(node));
     o.up = mapUps[id];
     node.innerHTML = S.map(sheetDef(), kind, mode, o);
+    cue('map', function () {
+      var onDay = mode === 'day' && !!state.today;
+      return { id: id, mode: mode, kind: kind, crop: !!o.crop && mode === 'day', day: onDay ? state.today.day : null, phase: onDay ? state.phase : null };
+    });
   }
   // The Opening's one hand: what it costs you and what it is worth where it arrives, by the rules
   // of the place in hand.
@@ -528,6 +590,7 @@
     setPlace(id);
     writeHash(id);
     drawOpening(true);
+    cue('opening', { changed: true });
   }
   // #<place>-<seed>: the text before the first hyphen is a place when this page has it, and the
   // rest is a seed of that place. The valley is always there, so #valley-48213 and #valley-shoal-3
@@ -572,6 +635,7 @@
     state.future = null; state.after = null; state.job = null; state.verdict = null; state.saved = false;
     startDay();
     showView('day');
+    cue('day', { day: state.today.day });
   }
   function startDay() {
     state.phase = 'choose'; state.pending = {}; state.flipped = {}; state.thirdOpen = {}; state.result = null; state.hot = null;
@@ -925,6 +989,7 @@
     if (!back) return;
     state.flipped[id] = on;
     card.classList.toggle('is-flipped', on);
+    cue('flip', { on: !!on });
     setInert(front, on); setInert(back, !on);
     var why = front.querySelector('.why-btn');
     if (why) why.setAttribute('aria-expanded', on ? 'true' : 'false');
@@ -988,6 +1053,7 @@
       if (b) b.checked = !send;
     }
     drawActions(); drawWays(); drawDayMap();
+    cue('plan', { id: id, send: !!send });
   }
   function setHot(id) {
     if (state.hot === id) return;
@@ -1007,6 +1073,26 @@
       for (i = 0; i < rows.length; i++) rows[i].classList.toggle('is-hot', Number(rows[i].getAttribute('data-sit')) === sit);
     }
   }
+  // The day just closed, for the motion and the sound (see cue): what the map and the cards show of it.
+  function fxReveal() {
+    var r = state.result, k = stockOf(state.life.params), fig = $('day-map-figure'), box = $('cards'), lanes = [], kinWith = [], levels = {}, i, x;
+    for (i = 0; i < r.results.length; i++) {
+      x = r.results[i];
+      lanes.push({ id: x.id, arrived: !!x.arrived, lost: !!x.lost, they: !!x.they });
+      if (k) levels[x.id] = [x.stock, x.stockAfter];
+    }
+    for (i = 0; i < r.kinWith.length; i++) kinWith.push({ id: r.kinWith[i].id, kinSent: !!r.kinWith[i].kinSent, theySent: !!r.kinWith[i].theySent });
+    return { day: state.today.day, lanes: lanes, kin: state.life.kin, kinWith: kinWith, bank: k ? { top: k.max, levels: levels } : null,
+             town: townOf(state.life.params), map: !!fig && !fig.hidden, cards: !!box && !box.hidden };
+  }
+  // The season's end just opened (see cue): what the map showed before it and shows now, and how many
+  // of the sister's habits came from you, as the season's end counts them (AYWords.seasonEnd).
+  function fxSeasonEnd(followBefore, keepsBefore) {
+    var habits = state.result.lookingRound.kin.habits, fig = $('day-map-figure'), n = 0, i;
+    for (i = 0; i < habits.length; i++) if (habits[i].source === 'you') n++;
+    return { day: state.today.day, kin: state.life.kin, followBefore: plainCopy(followBefore), followAfter: plainCopy(state.follow),
+             keepsBefore: plainCopy(keepsBefore), keepsAfter: plainCopy(state.keeps), kinCount: n, map: !!fig && !fig.hidden };
+  }
   function closeDay() {
     var list = [], i;
     if (state.view !== 'day' || state.phase !== 'choose') return;      // a day closes once
@@ -1022,6 +1108,7 @@
     state.hot = null;
     noteYou(state.result);
     drawDay();
+    cue('reveal', fxReveal);
     // In two columns "Next day" is in view above the cards and Tab goes on into them (see
     // placeActions). In one column it lies below all four: focus goes to the day's total, which
     // is on screen, and Tab walks the cards down to the button.
@@ -1039,8 +1126,10 @@
     if (state.phase === 'revealed' && state.result.lookingRound) {
       state.phase = 'season';
       state.phaseAt = now();
+      var fb = state.follow, kb = state.keeps;                   // what the map showed until now
       state.follow = followNow(); state.keeps = keepsNow();     // the map now shows what was taken up
       drawDay();
+      cue('seasonEnd', function () { return fxSeasonEnd(fb, kb); });
       focusOn($('h-season'));
       var sec = $('season-end');
       if (sec.scrollIntoView) { try { sec.scrollIntoView({ block: 'nearest' }); } catch (e) { /* older engines */ } }
@@ -1048,6 +1137,7 @@
     }
     if (state.result.over) { showLeaving(false); return; }
     startDay();
+    cue('day', { day: state.today.day });
     if (mqTwo.matches) toTop();
     else bringUp($('day-status'));               // in one column the cards are far down: stay with them
     focusOn(mqTwo.matches ? $('h-day') : $('day-status'));       // and the focus goes where the page now is
@@ -1068,6 +1158,7 @@
     state.follow = followNow(); state.keeps = keepsNow();
     drawLeavingMap();
     showView('leaving', quiet);
+    cue('leaving', { quiet: !!quiet });
   }
 
   // ---- the Afterwards -----------------------------------------------------------------------
@@ -1081,6 +1172,7 @@
     state.after = { t0: now(), shown: 0, done: false, lines: W.futureLines(state.future, life.kin), told: 0, quiet: !!quiet, said: false };
     showView('afterwards', quiet);
     buildAfter();
+    cue('afterStart', { jump: !!(skipNow || mqStill.matches), quiet: !!quiet });
     if (skipNow || mqStill.matches) finishAfter();
     else { every(tickAfter, 100); tickAfter(); pump(); }
   }
@@ -1219,6 +1311,23 @@
     ticker.scrollTop = ticker.scrollHeight;
     if (a.told !== toldBefore) drawNow();
     if (say.length) setText('after-say', say.join(' '));
+    cue('season', function () { return fxSeason(upTo, byClock, toldBefore); });
+  }
+  // The season the Afterwards has just been brought up to, for the motion and the sound (see cue): the
+  // same facts drawSeason30 and the strip draw for it, and the ticker's lines added since toldBefore.
+  function fxSeason(upTo, byClock, toldBefore) {
+    var a = state.after, fut = state.future, kin = state.life.kin, top = flowTop(state.life.params), se = fut.seasons[upTo - 1];
+    var yours = [], isNew = [], told = [], lines = [], kids = $('ticker').children, n = a.told - toldBefore, j, h;
+    for (j = 0; j < 8; j++) {
+      h = se.houses[j];
+      yours.push(h.way === 0 || h.way === kin);
+      isNew.push(!!(fut.arrival && fut.arrival.house === j && fut.arrival.season <= se.season));
+    }
+    for (j = 0; j < n; j++) {
+      told.push({ yours: !!a.lines[toldBefore + j].yours });
+      lines.push(kids[kids.length - n + j]);
+    }
+    return { to: upTo, byClock: byClock, yours: yours, isNew: isNew, strip: clamp(se.flow, 0, top) / top, told: told, lines: lines };
   }
   function tickAfter() {
     var a = state.after;
@@ -1233,6 +1342,11 @@
     showSeasons(30);
     a.done = true;
     drawFinalWays();
+    cue('afterEnd', function () {
+      var out = [], j, w = state.future.finalWay;
+      for (j = 0; j < 8; j++) out.push(w[j] === 0 || w[j] === state.life.kin);
+      return { finalYours: out };
+    });
     for (i = 0; i < intervals.length; i++) clearInterval(intervals[i]);
     intervals = [];
     setText('after-held', W.futureEnd(state.future));
@@ -1266,6 +1380,7 @@
     btn.hidden = !ready; btn.disabled = !ready;
     if (!ready || a.said || state.view !== 'afterwards') return;
     a.said = true;                                   // once: the way on is ready
+    cue('count');
     focusOn(btn);
     if (!a.quiet && btn.scrollIntoView) {            // the button itself, wherever the page stands (it is focused without scrolling)
       try { btn.scrollIntoView({ block: 'nearest' }); } catch (e) { /* older engines */ }
@@ -1414,6 +1529,7 @@
     setText('chron-afterword', W.afterword());
     $('other-place').hidden = !choosing();
     showView('chronicle');
+    cue('chronicle');
     layoutScale();                               // again, now that the view has a width
     // where the style sheet keeps the list of your ways' fate in a scroll box (a place whose futures tell many
     // changes of way), it is one the keys can reach, named by its heading, and it shows its closing lines
@@ -1426,12 +1542,14 @@
   // From the Chronicle back to the Opening, to choose another place (the Life just lived is done
   // and stored); the focus goes to the place in hand among the choices.
   function goOpening() {
+    var had = state.place;
     cancelTimers();
     state.life = null; state.seed = null; state.choices = []; state.result = null;
     state.future = null; state.after = null; state.job = null; state.verdict = null;
     applyHash();                                 // a hash changed during the Life is obeyed now, as on a load
     drawOpening();
     showView('opening');
+    cue('opening', { changed: state.place !== had });
     var on = $('place-' + state.place);
     if (on && choosing()) focusOn(on);
   }
@@ -1600,6 +1718,7 @@
     onMedia(mqTwo, function () {                                  // "Next day" sits before or after the cards by the layout
       if (state.view === 'day' && state.life) placeActions(true);
     });
+    onMedia(mqStill, function () { if (mqStill.matches) cue('still', {}); });      // reduced motion turned on: what moves stops now
     if (window.addEventListener) {
       window.addEventListener('hashchange', function () { readHash(); if (state.view === 'opening') { applyHash(); drawOpening(); } });
       window.addEventListener('resize', function () {
@@ -1623,13 +1742,17 @@
     readHash();
     applyHash();                                 // the hash's place in hand, its seed fixed
     wire();
+    bootFx();                                    // the motion and the sound, where they are there and can start
     drawOpening();
     var ok = false, had = state.place;
+    fxQuiet = true;                              // a Life rebuilt is set straight down: no transient, no sound
     try { ok = restore(data); } catch (e) { ok = false; }
+    fxQuiet = false;
     if (!ok) {
       state.life = null; state.seed = null; state.choices = [];
       if (state.place !== had) drawOpening();    // a snapshot of another place that could not be rebuilt
       showView('opening', true);
+      cue('opening', { changed: false });
     }
   }
 
