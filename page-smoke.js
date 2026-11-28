@@ -1429,9 +1429,43 @@ function placeColours(html) {
   where = 'index.html and app.js';
   W.use(VALLEY);                                    // the copy at rest in index.html is the valley's
   var html = readFile('index.html'), app = readFile('app.js');
-  // every script the page loads besides app.js: words.js, the places, sheet.js
-  var scripts = [readFile('words.js'), readFile('sheet.js')].concat(PLACE_FILES.map(function (file) { return readFile(file); })).join('\n');
+  // every script the page loads besides app.js: words.js, the places, sheet.js, motion.js and sound.js
+  var scripts = [readFile('words.js'), readFile('sheet.js'), readFile('motion.js'), readFile('sound.js')].concat(PLACE_FILES.map(function (file) { return readFile(file); })).join('\n');
   function has(text, bit, what) { if (text.indexOf(bit) < 0) throw new Error('missing ' + what + ': ' + bit); hooks++; }
+  // the motion and the sound (motion.js, sound.js): no theory word in either source, its comments included; the Sound
+  // button's label (W.soundWord) held to the sentence rules; every page script plain ASCII, byte for byte (the host may
+  // serve them as windows-1252); app.js builds nothing while no module listens and sets a rebuilt Life down quietly;
+  // every track registered lies under music/, where tools/pages.sh finds it
+  ['motion.js', 'sound.js'].forEach(function (file) {
+    var fm = FORBIDDEN_RE.exec(readFile(file));
+    if (fm) throw new Error('a theory word in ' + file + ' (its comments count): "' + fm[2] + '"');
+    hooks++;
+  });
+  var sw = sentenceFault(W.soundWord);               // the Sound button's label: a string, so not among NAMES
+  if (sw) throw new Error('AYWords.soundWord: ' + sw);
+  hooks++;
+  ['index.html', 'app.js', 'words.js', 'sheet.js', 'motion.js', 'sound.js'].concat(PLACE_FILES).forEach(function (file) {
+    var bytes = readFile(file, 'binary'), i;
+    for (i = 0; i < bytes.length; i++) if (bytes[i] > 0x7F) throw new Error(file + ' is not plain ASCII: byte ' + bytes[i] + ' at offset ' + i + ' (write the character as a \\u escape)');
+    hooks++;
+  });
+  has(app, 'if (!FX.length) return;', 'the cue that builds nothing while no module listens');
+  has(app, 'fxQuiet = true;', 'a rebuilt Life set down with no transient and no sound');
+  (function () {
+    var soundSrc = readFile('sound.js'), srcs = [], m, re = /\bsrc\s*:\s*['"]([^'"]*)['"]/g, realm = runString('this'), listed = null;
+    while ((m = re.exec(soundSrc))) srcs.push(m[1]);                   // every src written in sound.js, an example in a comment included
+    try { realm.load('sound.js'); if (realm.AYSound && typeof realm.AYSound.tracks === 'function') listed = realm.AYSound.tracks(); } catch (e) { listed = null; }
+    (function collect(x) {                                              // and every src AYSound.tracks() lists
+      if (!x) return;
+      if (typeof x === 'string') srcs.push(x);
+      else if (Array.isArray(x)) x.forEach(collect);
+      else if (typeof x === 'object') { if (typeof x.src === 'string') srcs.push(x.src); else Object.keys(x).forEach(function (k) { collect(x[k]); }); }
+    })(listed);
+    srcs.forEach(function (src) {
+      if (!/^music\/[a-z0-9-]+\.(mp3|m4a)$/.test(src)) throw new Error('a track that is not a file under music/ (sound.js, 4.7): ' + src);
+      hooks++;
+    });
+  })();
   if (html.indexOf('<title>After You</title>') !== 0) throw new Error('index.html does not start with its title');
   // the page's own text at rest (its markup without the style sheet, the scripts and the tags) carries no theory word
   var pageText = html.replace(/<style>[\s\S]*?<\/style>/g, ' ').replace(/<script[\s\S]*?<\/script>/g, ' ').replace(/<[^>]*>/g, ' ');
@@ -1440,11 +1474,12 @@ function placeColours(html) {
   hooks++;
   has(html, '<meta name="claude:viewport-fit-sides" content="cover">', 'viewport promise');
   if (/<!DOCTYPE|<html[\s>]|<head[\s>]|<body[\s>]/i.test(html)) throw new Error('index.html carries document tags the host adds itself');
-  // the scripts, in the order they need each other: the engine, the words, each place (the valley first), the sheet, the page
-  var tags = /<script src="engine\.js"><\/script><script src="words\.js"><\/script>((?:<script src="places\/[a-z]+\.js"><\/script>)+)<script src="sheet\.js"><\/script><script src="app\.js"><\/script>\s*$/.exec(html);
-  if (!tags) throw new Error('index.html does not end with its scripts: engine.js, words.js, places/<id>.js for each place, sheet.js, app.js');
+  // the scripts, in the order they need each other: the engine, the words, each place (the valley first), the sheet,
+  // the motion and the sound (each told of the page's moments by app.js, which never needs them), the page
+  var tags = /<script src="engine\.js"><\/script><script src="words\.js"><\/script>((?:<script src="places\/[a-z]+\.js"><\/script>)+)<script src="sheet\.js"><\/script><script src="motion\.js"><\/script><script src="sound\.js"><\/script><script src="app\.js"><\/script>\s*$/.exec(html);
+  if (!tags) throw new Error('index.html does not end with its scripts: engine.js, words.js, places/<id>.js for each place, sheet.js, motion.js, sound.js, app.js');
   if (tags[1].indexOf('<script src="places/valley.js"></script>') !== 0) throw new Error('the valley is not the first place index.html loads');
-  if ((html.match(/<script /g) || []).length !== 4 + PLACE_FILES.length) throw new Error('a script outside the list at the end of index.html');
+  if ((html.match(/<script /g) || []).length !== 6 + PLACE_FILES.length) throw new Error('a script outside the list at the end of index.html');
   if ((html.match(/<link /g) || []).length !== 1 || html.indexOf('https://fonts.googleapis.com/css2?') < 0 || html.indexOf('&display=swap') < 0) throw new Error('fonts: one Google Fonts link expected');
   if (/https?:\/\/(?!fonts\.googleapis\.com)/.test(html + app + scripts)) throw new Error('an address other than the font host (a namespace name counts)');
   ['opening', 'day', 'leaving', 'afterwards', 'chronicle'].forEach(function (v) { has(html, 'data-view="' + v + '"', 'view'); });

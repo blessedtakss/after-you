@@ -2,7 +2,8 @@
 # The page check run: every check of the page on the working tree as it is, with the fingerprints compared
 # line for line against reference streams made the same way from a git ref (default v0.2.0): the valley's
 # sentences, page and maps, every place's words, every drawing of every place's sheet, and a whole Life's
-# page and maps in every place.
+# page and maps in every place; then the motion and the sound held to their contract on the working tree alone
+# (part 15, checks/page/motion-sound.js).
 #
 #   checks/run-all.sh [ref]          ref: a tag, branch or commit (default v0.2.0; or set AY_REF)
 #
@@ -13,15 +14,16 @@
 # too, so it must be empty, new, or a folder an earlier run wrote (it leaves a .run-all mark there); any other
 # folder is refused.
 # Ends with a PASS/FAIL line for each check and an overall line; exits 1 if any check fails, 2 if the run
-# could not start. JSC overrides the path of jsc, RUN_ALL_OUT the output folder. Python 3 is needed for five of
-# the comparisons. About 8 minutes.
+# could not start. JSC overrides the path of jsc, RUN_ALL_OUT the output folder. Part 15 runs strict, so a check
+# that waits for modules that boot fails; AY_FX_STUB=1 lets such a check only wait (a module in the game folder that
+# declines to boot fails either way). Python 3 is needed for five of the comparisons. About 8 minutes.
 JSC=${JSC:-/System/Library/Frameworks/JavaScriptCore.framework/Versions/Current/Helpers/jsc}
 ROOT=$(cd "$(dirname "$0")/.." && pwd) || exit 2
 REF=${1:-${AY_REF:-v0.2.0}}
 OUT=${RUN_ALL_OUT:-$ROOT/checks/out/run-all}                                    # (RUN_ALL_OUT: another output folder)
 PAGE="$ROOT/checks/page"
 CK=$(printf '%s' "$ROOT/checks" | sed "s/\\\\/\\\\\\\\/g; s/'/\\\\'/g")      # the checks folder, quoted for jsc -e
-GAME="index.html engine.js words.js sheet.js places/*.js app.js page-smoke.js harness.js smoke.js preview.html"
+GAME="index.html engine.js words.js sheet.js motion.js sound.js places/*.js app.js page-smoke.js harness.js smoke.js preview.html"
 
 [ -x "$JSC" ] || { echo "run-all: jsc not found at $JSC (set JSC)"; exit 2; }
 command -v python3 > /dev/null || { echo "run-all: python3 not found"; exit 2; }
@@ -89,6 +91,9 @@ done
 ( for pl in banks watch bridges saltmarket; do echo "== $pl"; python3 "$PAGE/contrast.py" index.html $pl; echo "exit $?"; done ) > "$OUT/contrast.txt" 2>&1
 note "preview.html against index.html in the host skeleton (and each variant's)"
 python3 "$PAGE/preview.py" > "$OUT/preview.txt" 2>&1; echo "exit $?" >> "$OUT/preview.txt"
+note "the motion and the sound against their contract (part 15, the working tree alone)"
+if [ "${AY_FX_STUB:-}" = 1 ]; then MSARGS=""; else MSARGS="-- strict"; fi       # (strict unless AY_FX_STUB=1)
+"$JSC" -e "var CHECKS_DIR='$CK'" "$PAGE/motion-sound.js" $MSARGS > "$OUT/motion-sound.txt" 2>&1; echo "exit $?" >> "$OUT/motion-sound.txt"
 
 note "waiting for the long runs"
 wait
@@ -98,7 +103,7 @@ diff "$OUT/ref-harness-gates.txt" "$OUT/harness-gates.txt" > "$OUT/harness-gates
 python3 "$PAGE/same-sentences.py" "$OUT/ref-words-stream-valley.txt" "$OUT/words-stream-valley.txt" > "$OUT/same-valley-sentences.txt" 2>&1; echo "exit $?" >> "$OUT/same-valley-sentences.txt"
 
 # ---- phase 2: the stand-in DOM (four at a time) ---------------------------------------------------------
-note "the stand-in DOM: 27 configurations, then the chooser, hash, storage and restore scenarios"
+note "the stand-in DOM: 28 configurations, then the chooser, hash, storage and restore scenarios"
 "$PAGE/run-dom.sh" > "$OUT/dom.txt" 2>&1; echo "exit $?" >> "$OUT/dom.txt"
 "$PAGE/run-dom-places.sh" > "$OUT/dom-places.txt" 2>&1; echo "exit $?" >> "$OUT/dom-places.txt"
 
@@ -164,9 +169,9 @@ echo "page-map words fingerprint, all places: here fnv1a32 $hg over $cg sentence
 if [ "$(lastexit "$OUT/golden-words.txt")" = 0 ] && [ -n "$hg" ] && cmp -s "$OUT/golden-words-table.txt" "$OUT/ref-golden-words-table.txt"; then
   result PASS "words fingerprint, all places" "fnv1a32 $hg over $cg sentences; its table as at $REF ($(sed -n 's/^seconds //p' "$OUT/golden-words.txt") s)"
 else result FAIL "words fingerprint, all places" "here $hg ($cg), $REF $hgr ($cgr); see $SHOWOUT/golden-words.txt"; fi
-# 8. the stand-in DOM, 27 configurations
+# 8. the stand-in DOM, 28 configurations (the last, fxThrow, with the first's clock reads)
 if [ "$(lastexit "$OUT/dom.txt")" = 0 ] && grep -q '^ALL OK$' "$OUT/dom.txt"; then
-  result PASS "stand-in DOM (dom-run.js)" "$(grep -c '^OK ' "$OUT/dom.txt") of 27 configurations OK"
+  result PASS "stand-in DOM (dom-run.js)" "$(grep -c '^OK ' "$OUT/dom.txt") of 28 configurations OK; $(sed -n 's/^fxThrow: \([0-9]*\) clock reads.*/fxThrow with \1 clock reads, as without it/p' "$OUT/dom.txt")"
 else result FAIL "stand-in DOM (dom-run.js)" "see $SHOWOUT/dom.txt"; fi
 # 9. the chooser, hash, storage and restore scenarios
 if [ "$(lastexit "$OUT/dom-places.txt")" = 0 ] && [ "$(grep -c ': PASS (' "$OUT/dom-places.txt")" = 6 ]; then
@@ -182,9 +187,10 @@ if [ "$(lastexit "$OUT/sheet-probe.txt")" != 0 ] || [ "$nc" != "$(grep -c '^[a-z
 elif [ "$(lastexit "$OUT/sheet-probe-diff.txt")" = 0 ] && [ -n "$sd" ]; then
   result PASS "sheet rules and drawings" "$nc places by their own rules, every sheet whole; $sdd, the same as at $REF"
 else result FAIL "sheet rules and drawings" "$nd drawings differ from $REF (first: ${first:-none}); see $SHOWOUT/sheet-probe-diff.txt"; fi
-# 11. colour contrast, each place against the valley
-if [ "$(grep -c '^exit 0$' "$OUT/contrast.txt")" = 4 ] && [ "$(grep -c '^pairs lower than the valley: 0$' "$OUT/contrast.txt")" = 4 ]; then
-  result PASS "colour contrast" "4 places, no pair lower than the valley's, light or dark"
+# 11. colour contrast, each place against the valley, and the marks over the strongest dusk
+if [ "$(grep -c '^exit 0$' "$OUT/contrast.txt")" = 4 ] && [ "$(grep -c '^pairs lower than the valley: 0$' "$OUT/contrast.txt")" = 4 ] \
+   && [ "$(grep -c '^marks under 3:1 at the strongest dusk: 0$' "$OUT/contrast.txt")" = 4 ]; then
+  result PASS "colour contrast" "4 places, no pair lower than the valley's, light or dark; no mark under 3:1 at the strongest dusk"
 else result FAIL "colour contrast" "see $SHOWOUT/contrast.txt"; fi
 # 12. every place's walk, step by step
 wn=$(sed -n 's/^WALKS (\([0-9]* places, [0-9]* steps\),.*/\1/p' "$OUT/walks.txt"); wnr=$(sed -n 's/^WALKS (\([0-9]* places, [0-9]* steps\),.*/\1/p' "$OUT/ref-walks.txt")
@@ -203,6 +209,13 @@ else result FAIL "preview.html current" "stale: $(grep '^STALE' "$OUT/preview.tx
 # 14. nothing changed under the run
 if cmp -s "$OUT/md5-start.txt" "$OUT/md5-end.txt"; then result PASS "game files unchanged during the run" "md5 of the game files at start and end"
 else result FAIL "game files unchanged during the run" "FILES CHANGED DURING THE RUN"; fi
+# 15. the motion and the sound held to their contract (the working tree alone: there is nothing to compare at the ref)
+msl=$(grep '^MOTION-SOUND: [A-Z]* (' "$OUT/motion-sound.txt" | tail -1)
+msd=$(printf '%s' "$msl" | sed -n 's/^MOTION-SOUND: [A-Z]* (\(.*\)) fnv1a32 [0-9a-f]*$/\1/p'); msh=$(printf '%s' "$msl" | sed -n 's/.* fnv1a32 \([0-9a-f]*\)$/\1/p')
+echo "motion and sound (part 15): ${msd:-none}; log fnv1a32 ${msh:-none}" >> "$H"
+if [ "$(lastexit "$OUT/motion-sound.txt")" = 0 ] && printf '%s' "$msl" | grep -q '^MOTION-SOUND: PASS ('; then
+  result PASS "motion and sound (motion-sound.js)" "$msd; log fnv1a32 $msh"
+else result FAIL "motion and sound (motion-sound.js)" "${msd:-it did not finish}; see $SHOWOUT/motion-sound.txt"; fi
 
 echo
 echo "Hashes"

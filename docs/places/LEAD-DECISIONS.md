@@ -1,4 +1,4 @@
-> **Record of its time, and binding for v0.2.0.** Written 2026-11-25 17:39, last changed 2026-11-26 02:33 (local time, UTC+10), copied here on 2026-11-26 with its paths made neutral and nothing else changed. Paths that start with `<scratch>/`, and the build folders it names without that prefix (such as `e1/`, `final/` or `tune-banks/`), were in the build's scratch folder, which is not in this repository; nor are the scripts and outputs it cites. The checks kept from that work are in [`checks/`](../../checks/). Where a report in these notes disagrees with this file, this file wins.
+> **Record of its time, and binding for v0.2.0.** Written 2026-11-25 17:39, last changed 2026-11-26 02:33 (local time, UTC+10), copied here on 2026-11-26 with its paths made neutral and nothing else changed. Paths that start with `<scratch>/`, and the build folders it names without that prefix (such as `e1/`, `final/` or `tune-banks/`), were in the build's scratch folder, which is not in this repository; nor are the scripts and outputs it cites. The checks kept from that work are in [`checks/`](../../checks/). Where a report in these notes disagrees with this file, this file wins. Section 6 was added on 2026-11-27, for the motion and sound pass; sections 1 to 5 are as copied.
 
 # Places: the design lead's decisions after the settle round (2026-11-25)
 
@@ -154,3 +154,24 @@ sentence stream, page and maps fingerprints are unchanged.
    three earlier lives and a number line (the Opening is not under the day's hard rule; Begin stays
    on screen); a turned Why? card scrolling the day (a passing state, as published); the Chronicle
    listing the newest 20 lives with no fold.
+
+## 6. The motion and sound pass (2026-11-27): two older rules superseded
+
+The pass adds motion and sound to the page: `motion.js` and `sound.js`, which `app.js` tells of the
+page's moments after it has drawn them and never needs. With either file absent, declining to start
+or failing, the page is exactly as before.
+
+1. **"Motion in two places only" is superseded.** The first version's rule
+   ([UI-SPEC.md](../first-version/UI-SPEC.md), line 151: the card turning over for "Why?" and the
+   Afterwards, everything else still) gives way to the pass's own: motion joins a cause to its effect,
+   makes time felt and gives each place a presence. It never adds a fact the page does not show, never
+   holds a control, moves the focus or changes the layout, and always ends on the drawing at rest.
+   With reduced motion asked for, nothing moves.
+2. **Sound is off the cut list.** The first design cut it ([design.md](../first-version/design.md),
+   line 105). It is now part of the page: off by default, started only from its button on each visit
+   (a stored choice never starts it), and silent on purpose wherever it could tell more than the page
+   says: every missing act, the sister's dealings, the seal and the verdict.
+3. **Still binding, for motion and sound as for words:** 3.2 above. The page never says whether a
+   missing act was luck or a choice: a neighbour's missing act is shown by one fixed image per place,
+   the same whatever its cause, and makes no sound; your own luck shows only on your own lane, where
+   the page already tells it. `engine.js` is not edited.

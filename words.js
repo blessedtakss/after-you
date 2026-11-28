@@ -863,6 +863,9 @@
     out.push(W.waysEnd(future));
     return out;
   };
+  // The one word of the sound control, which sound.js letters its button with: the same in every place,
+  // and a string, not a function, since it is a label and no sentence.
+  W.soundWord = 'Sound';
   W.again = function () { return 'Live another life'; };
   W.againSame = function () { return L('againSame'); };
   // The Chronicle's last block: one short paragraph of the place in force, a parallel in the world.

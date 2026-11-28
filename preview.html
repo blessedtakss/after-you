@@ -29,6 +29,8 @@
   --t-xl: 1.5rem;
   --t-xxl: 2.25rem;
   --t-display: clamp(2.75rem, 8vw, 4.5rem);
+  --dusk: #1C2A3A;          /* the light's dusk wash (motion.js), at --dusk-k times its strength */
+  --dusk-k: 1;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
@@ -38,6 +40,7 @@
     --river: #72B9E8; --river-wash: #1D3C54;
     --madder: #E79080;
     --yours: #F0C35B; --yours-fill: #F0C35B; --yours-wash: #453B1F;
+    --dusk: #05080D; --dusk-k: 1.5;
     color-scheme: dark;
   }
 }
@@ -48,6 +51,7 @@
   --river: #72B9E8; --river-wash: #1D3C54;
   --madder: #E79080;
   --yours: #F0C35B; --yours-fill: #F0C35B; --yours-wash: #453B1F;
+  --dusk: #05080D; --dusk-k: 1.5;
   color-scheme: dark;
 }
 /* The Banks (app.js marks the place in hand on the root, data-place): a chart of the cove. Kelp
@@ -277,7 +281,7 @@ h2:focus-visible, h1:focus-visible, h3:focus-visible, h4:focus-visible { outline
 .m-crest { fill: none; stroke: var(--ink-soft); stroke-width: 0.8; }
 .m-cart { fill: var(--paper-raised); stroke: var(--ink-soft); stroke-width: 0.9; }
 /* the Bridges: a season's number lettered over a cart's bed keeps a wider halo, so that a minus sign is not read
-   between the bed's edges ("=32" for "−32") */
+   between the bed's edges ("=32" for "-32" with the minus sign, U+2212) */
 :root[data-place="bridges"] #map-after .m-num { stroke-width: 6px; }
 .m-wheel { fill: var(--paper-raised); stroke: var(--ink); stroke-width: 0.9; }
 .m-shaft { fill: none; stroke: var(--ink-soft); stroke-width: 0.9; stroke-linecap: round; }
@@ -802,13 +806,79 @@ h2:focus-visible, h1:focus-visible, h3:focus-visible, h4:focus-visible { outline
   .chron-grid { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
 }
 
+/* ---- motion (motion.js) ---- */
+/* The two layers motion.js lays on each map (fx-air under the holdings, fx-go under the lettering): aria-hidden,
+   clipped by the map's own clip, and nothing in them takes a pointer. Every colour is a token. */
+.fx { pointer-events: none; }
+.fx-cool { fill: var(--river-wash); stroke: none; }
+.fx-dusk { fill: var(--dusk); fill-opacity: calc(var(--dusk-k) * 0.14); stroke: none; }   /* its opacity carries the dusk over 0.14 */
+.fx-mist path { fill: none; stroke: var(--paper-raised); stroke-opacity: 0.12; stroke-linecap: round; stroke-linejoin: round; }
+.fx-shimmer { fill: none; stroke: var(--paper-raised); stroke-width: 1; stroke-dasharray: 3 37; stroke-linecap: round; }
+.fx-wx-ink { fill: none; stroke: var(--ink); stroke-width: 0.7; stroke-opacity: 0.55; stroke-linecap: round; stroke-linejoin: round; }
+.fx-wx-ink.fx-leaf { fill: var(--ink); fill-opacity: 0.25; }
+.fx-wx-pale { fill: none; stroke: var(--paper-raised); stroke-linecap: round; stroke-linejoin: round; }
+.fx-snow { stroke-width: 2.2; stroke-dasharray: 6 9; }
+.fx-dip { stroke-width: 5; stroke-opacity: 0.7; }
+.fx-wx-dots { fill: none; stroke: var(--ink); stroke-width: 0.9; stroke-opacity: 0.35; stroke-dasharray: 0.1 2.4; stroke-linecap: round; }
+.fx-wx-lamp { fill: var(--paper-raised); stroke: var(--ink); stroke-width: 0.6; }
+.fx-tie { fill: none; stroke: var(--yours); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.fx-trav { fill: none; stroke: var(--field); stroke-width: 1.1; stroke-linecap: round; stroke-linejoin: round; }
+.fx-trav .fx-solid { fill: var(--field); stroke: none; }
+.fx-img { fill: none; stroke: var(--ink); stroke-width: 0.8; stroke-linecap: round; stroke-linejoin: round; }
+.fx-img .fx-solid { fill: var(--ink); stroke: none; }
+.fx-pale { fill: var(--paper-raised); }
+.fx-shadow { fill: var(--ink); fill-opacity: 0.15; stroke: none; }
+.fx-net { fill: none; stroke: var(--ink); stroke-width: 0.6; }
+.fx-fire { fill: var(--madder); stroke: var(--madder); stroke-width: 0.6; }
+.fx-slash { fill: none; stroke: var(--madder); stroke-width: 1.3; }
+.fx-ripple { fill: none; stroke: var(--river); stroke-width: 1.2; }
+.fx-g-disc { fill: var(--paper-raised); stroke: var(--river); stroke-width: 1.2; }
+.fx-g-fill { fill: var(--river); stroke: none; }
+.fx-g-spoke { fill: none; stroke: var(--paper-raised); stroke-width: 0.7; }
+.fx-ghost-bound { fill: none; stroke: var(--yours); stroke-width: 2.4; }
+.fx-ghost-diamond { fill: var(--yours-fill); stroke: var(--yours); stroke-width: 1.2; }
+/* the drawn marks that are stamped turn and scale about their own middle (nothing changes at rest) */
+.m-diamond, .m-tent, .m-hand-head, .m-plan-tip, .m-lost-x { transform-box: fill-box; transform-origin: center; }
+/* ---- end motion ---- */
+
+/* ---- sound (sound.js) ---- */
+/* The Sound button (made by sound.js only where Web Audio exists, and moved into each view's row): a
+   native toggle named by its word. Its state is shown by shape, not colour: "on" adds two ink waves. In
+   the day's and the Afterwards' rows, and below 40rem everywhere, the word is visually hidden and the
+   box is 1.75rem, with a 44px hit area that takes no room. Below 22.5rem the day's is 1.5rem (its hit area
+   still 44px) and the day's row closes up, so that "Day 11 of 12", the number and the button keep to one
+   line at 320px; a gap, not a margin, so that a button wrapped onto a line of its own starts at the edge. */
+.sound-btn { position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; }
+.sound-glyph { flex: none; width: 1.15rem; height: 1.15rem; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.sound-btn .sound-wave { visibility: hidden; }
+.sound-btn[aria-pressed="true"] .sound-wave { visibility: visible; }
+.sound-btn.is-compact { width: 1.75rem; height: 1.75rem; min-height: 0; padding: 0; text-decoration: none; }
+.sound-btn.is-compact .sound-word { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
+.sound-btn.is-compact::after { content: ""; position: absolute; inset: -0.5rem; }
+.day-title .sound-btn { align-self: center; margin-block: -0.25rem; }
+@media (max-width: 39.99rem) {
+  .sound-btn { width: 1.75rem; height: 1.75rem; min-height: 0; padding: 0; text-decoration: none; }
+  .sound-btn .sound-word { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; border: 0; }
+  .sound-btn::after { content: ""; position: absolute; inset: -0.5rem; }
+}
+@media (max-width: 22.5rem) {
+  .day-title { column-gap: 0.4rem; }
+  .day-title .sound-btn.is-compact { width: 1.5rem; height: 1.5rem; }
+  .day-title .sound-btn.is-compact::after { inset: -0.625rem; }
+}
+/* ---- end sound ---- */
+
 @media (prefers-reduced-motion: reduce) {
   .card-inner, .card-face, .m-fill, .flow-col i { transition: none; }
+  /* this stops CSS animations only: motion.js's own (Web Animations) are not started under reduced motion,
+     and its still cue stops those running when reduced motion is turned on */
+  .fx, .fx * { animation: none !important; transition: none !important; }
 }
 /* Filled against open carries meaning on these marks, and forced colours would level them:
    they keep the page's tokens, which already follow the light or dark scheme in force. */
 @media (forced-colors: active) {
   .opt-face, .m, .k, .track-day, .meter-bar, .meter-fill, .scale-bar, .scale-block, .scale-pin, .why-mark, .flow-col i { forced-color-adjust: none; }
+  .fx { display: none; }                         /* the motion's layers on the maps: the drawing at rest is all of it */
 }
 </style>
 
@@ -1035,5 +1105,5 @@ h2:focus-visible, h1:focus-visible, h3:focus-visible, h4:focus-visible { outline
 
 </main>
 
-<script src="engine.js"></script><script src="words.js"></script><script src="places/valley.js"></script><script src="places/banks.js"></script><script src="places/watch.js"></script><script src="places/bridges.js"></script><script src="places/saltmarket.js"></script><script src="sheet.js"></script><script src="app.js"></script>
+<script src="engine.js"></script><script src="words.js"></script><script src="places/valley.js"></script><script src="places/banks.js"></script><script src="places/watch.js"></script><script src="places/bridges.js"></script><script src="places/saltmarket.js"></script><script src="sheet.js"></script><script src="motion.js"></script><script src="sound.js"></script><script src="app.js"></script>
 </body></html>

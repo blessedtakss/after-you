@@ -1,8 +1,30 @@
-# Baseline: v0.2.0
+# Baseline
 
-What the checks gave on v0.2.0, measured on 26 November 2026 on the working tree when its game files were exactly the tag's (`git diff --name-only v0.2.0` listed none). The page check run compares against the tag itself, so these values are for reading a failure, not inputs to the run. After a new release is tagged, `checks/run-all.sh <tag>` prints the new values in its "Hashes" block.
+What the checks gave on each release, newest first. The page check run compares against a tag itself, so these values are for reading a failure, not inputs to the run. After a new release is tagged, `checks/run-all.sh <tag>` prints the new values in its "Hashes" block.
 
-## Page fingerprints (`checks/run-all.sh`, against v0.2.0)
+## v0.3.0: the motion and the sound
+
+Measured on 27 November 2026 with `checks/run-all.sh v0.2.1` on the working tree that was then committed and tagged v0.3.0 (the md5 of every game file at the start and end of the run is the tagged file's): `RUN-ALL: PASS (15 of 15 checks, against v0.2.1, 477 s)`.
+
+Every fingerprint the run compares at a ref is the same as at v0.2.1, and so the same as v0.2.0's in the tables below: the `harness.js` gate lines (12 PASS, sha256 `8039556e2f3d7e3d…`), the valley's sentence stream (fnv1a32 `6d84219b` over 382,559 sentences, identical line for line), the valley-only page (page `abf3fee6`, maps `7a78d3e9`), the five-place valley walk (page `c8f9bb5d`, maps `7a78d3e9`, 168 of 168 steps with the same markup and maps), the words fingerprint over all places (fnv1a32 `5ac5fa25` over 2,381,819 sentences, its table unchanged), the sheet drawings (5 places, 103 drawings, fnv1a32 `035800f1`) and every place's walk (5 places, 840 steps, page `e95ec1c3`, maps `0e6f0738`). The page never needs `motion.js` or `sound.js`: parts 6 and 12 load them as `index.html` does, and in their stand-in browser, which has no animation or audio, the modules decline to start; part 15 shows that a page whose modules do start has the same markup and maps at every step, apart from the modules' `.fx` layers and the Sound button.
+
+What is new or has moved in this release:
+
+| Part | v0.3.0 |
+| --- | --- |
+| 15. The motion and the sound (`page/motion-sound.js -- strict`, new) | `MOTION-SOUND: PASS (7 sections, 89 checks, 0 failed; motion.js boots, sound.js boots) fnv1a32 006e45ae`, 66.5 s. By section: loading 14, disabled 6, stubbed 29, twins 12, calendar 5, geometry 3, planted faults 20 (all 20 planted faults caught) |
+| 1. `page-smoke.js` | `PAGE SMOKE: PASS` in 223 s: 2,381,819 sentences checked, 115 of 115 word functions exercised, 4,849,132 engine fields read, 330 page hooks found; with the new scans of the two modules (no theory word, every byte below 0x80) and of `app.js`'s cues |
+| 8. The stand-in DOM | 28 of 28 configurations (v0.2.0: 27). The 28th, fxThrow, is the first again with modules that start and throw at every cue (896 cues thrown); it passes whole with the first's 341 clock reads |
+| 11. Colour contrast | As at v0.2.0 (4 places, no pair lower than the valley's), and newly checked at the strongest dusk (`--dusk` `#1C2A3A` at 0.14 in light, `#05080D` at 1.5 x 0.14 in dark): no mark under 3:1; the lowest is `--field` on the dusk in the valley's light, 3.88 |
+| 9, 13 | Six of six chooser, hash, store and restore scenarios; `preview.html` current in 4 of 4 places it is kept |
+
+Seen in a real browser before the release (the matrix in section 7 of `docs/motion-sound/SPEC.md`): the Sound button keeps to the day's line at 320 px in the valley, the Banks and the Border and wraps flush with the edge in the Bridges and the Saltmarket, with no sideways scroll; the sound starts only from a click on it, its bed peaking at about -28.5 dBFS and a reveal at about -22.6 dBFS (the limit is -18); no console errors. Not seen here: a hidden browser pane throttles its frames, so the motion's self-downgrade rightly turns the loops off there, and the timing of the loops, a tab switched away during the first reveal, reduced motion turned on mid-Life, Safari, iOS and Android are left to a real device.
+
+## v0.2.0
+
+What the checks gave on v0.2.0, measured on 26 November 2026 on the working tree when its game files were exactly the tag's (`git diff --name-only v0.2.0` listed none).
+
+### Page fingerprints (`checks/run-all.sh`, against v0.2.0)
 
 | Fingerprint | v0.2.0 |
 | --- | --- |
@@ -21,7 +43,7 @@ The valley-only page and the five-place walk hash the same Life; their page hash
 
 Run against v0.1.0 instead (`checks/run-all.sh v0.1.0`), the same working tree fails exactly the six comparisons where the page has moved since the first version, and exits 1 (6 of 13 parts, 469 s): the valley's sentence stream (v0.1.0: fnv1a32 `20bddf72` over 362,279 sentences; v0.2.0's `page-smoke.js` plays more valley Lives), the valley-only page (v0.1.0 has no `places/valley.js` for it to load), the valley walk (v0.1.0: page `72a7c55d`, maps `7a78d3e9`: the maps have not moved; v0.2.0's page carries the choice of places), the words fingerprint (v0.1.0: `20bddf72` over 362,279 sentences, the valley alone), the sheet drawings (v0.1.0 has no `sheet.js`, so the probe draws nothing there: 103 drawings differ) and every place's walk (v0.1.0 walks the valley alone, with the same maps at all 168 steps and different markup at every step; the four new places are walked only here). The `harness.js` gate lines are the same at both tags.
 
-## Engine checks
+### Engine checks
 
 **Valley identity** (`checks/engine/run-identity.sh`): v0.1.0's `engine.js` against v0.2.0's, 472 Lives, 19,856 JSON comparisons (61.5 MB), 0 differ: `PASS  the valley is unchanged` (247 s).
 

@@ -70,4 +70,41 @@ for fg, bg, what in PAIRS:
         flag = '  LOWER'; worse += 1
     print('%-14s %-14s %8.2f %8.2f %8.2f %8.2f   %s%s' % (fg, bg, vl, pl_, vd, pd, what, flag))
 print('pairs lower than the valley: %d' % worse)
-sys.exit(1 if worse else 0)
+
+# The strongest dusk (SPEC 2.5): the light's two washes over the sheet at their darkest, Leaving and the start of the
+# Afterwards (--river-wash at .03, then --dusk at --dusk-k x .14; the third season's end, dusk .12 alone, is lighter),
+# and the marks drawn over them: --field, --river and --ink-soft keep 3:1 or more, light and dark, valley and place.
+# A wash is opacity over the sheet, so it is mixed channel by channel in sRGB, as the browser composites it.
+def numbers(block):
+    return dict(re.findall(r'--([a-z-]+):\s*([0-9]*\.?[0-9]+)\s*;', block))
+
+def mix(under, over, a):
+    u, o = under.lstrip('#'), over.lstrip('#')
+    return '#' + ''.join('%02X' % round(int(u[i:i + 2], 16) * (1 - a) + int(o[i:i + 2], 16) * a) for i in (0, 2, 4))
+
+SPEC_DUSK = {'light': ('#1C2A3A', 1.0), 'dark': ('#05080D', 1.5)}
+dk_media, dk_attr = numbers(dark_media).get('dusk-k'), numbers(dark_attr).get('dusk-k')
+assert dk_media == dk_attr, 'the two dark blocks of the valley set --dusk-k differently: %s / %s' % (dk_media, dk_attr)
+if 'dusk' in V_light:                          # the valley's blocks carry it (the dark ones inherit what they do not set)
+    k_light = float(numbers(root).get('dusk-k', 1))
+    dusk = {'light': (V_light['dusk'], k_light), 'dark': (V_dark['dusk'], float(dk_media) if dk_media else k_light)}
+    whence = 'from index.html'
+else:
+    dusk = SPEC_DUSK
+    whence = 'not in index.html yet: the values of SPEC 2.5'
+print('the strongest dusk (%s): --dusk %s at %g x .14 light, %s at %g x .14 dark' % (whence, dusk['light'][0], dusk['light'][1], dusk['dark'][0], dusk['dark'][1]))
+WASHES = [(0.03, 0.14), (0.0, 0.12)]          # (cool, dusk): Leaving and the Afterwards' start; the third season's end
+under = 0
+print('%-14s %-12s %8s %8s %8s %8s' % ('mark', 'on', 'valley', place, 'valley', place))
+print('%-14s %-12s %8s %8s %8s %8s' % ('', '', 'light', 'light', 'dark', 'dark'))
+for fg in ('field', 'river', 'ink-soft'):
+    row = []
+    for tokens_, theme in ((V_light, 'light'), (P_light, 'light'), (V_dark, 'dark'), (P_dark, 'dark')):
+        colour, k = dusk[theme]
+        sheets = [mix(mix(tokens_['paper-raised'], tokens_['river-wash'], c), colour, min(1.0, k * d)) for c, d in WASHES]
+        row.append(min(ratio(tokens_[fg], s) for s in sheets))
+    flag = '  UNDER 3:1' if min(row) + 1e-9 < 3 else ''
+    if flag: under += 1
+    print('%-14s %-12s %8.2f %8.2f %8.2f %8.2f%s' % (fg, 'the dusk', row[0], row[1], row[2], row[3], flag))
+print('marks under 3:1 at the strongest dusk: %d' % under)
+sys.exit(1 if worse or under else 0)

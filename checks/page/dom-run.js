@@ -1,4 +1,11 @@
 /*
+ * motion-and-sound changes (2026-11-27), every other check kept as it was:
+ *  - every clock read of the run (performance.now) is counted, and the OK line ends with the count, so that two
+ *    configurations can be compared (run-dom.sh compares the fxThrow configuration with the first);
+ *  - CONFIG.fxThrow: stand-in modules take the place of motion.js and sound.js before app.js loads, whose boot
+ *    returns true and whose every cue throws; the Life must pass whole, with every check, and the same clock reads
+ *    as without them (the page never needs the modules: app.js catches what they throw, SPEC 6.5).
+ *
  * review-fix1 changes (2026-11-26), every other check kept as it was:
  *  - the season replay's line shows exactly where the seal would otherwise have been earned (LEAD L1:
  *    seal.wonOnSeason, the house kept, the mark clear, no last-day clause), not on every wonOnSeason;
@@ -52,11 +59,13 @@
  *    hidden, and the Chronicle ends with the place's afterword.
  *
  * Runs app.js through a whole Life in the stand-in DOM (dom-harness.js) and checks the page logic
- * that the review asked to change. From the game folder (run-dom.sh runs the 27 configurations):
+ * that the review asked to change. From the game folder (run-dom.sh runs the 28 configurations):
  *   jsc -e "var CHECKS_DIR='<checks folder>'; var CONFIG = {...}" <checks folder>/page/dom-run.js
  */
 var HERE = (typeof CHECKS_DIR === 'string' ? CHECKS_DIR : 'checks') + '/page/';   // this folder (CHECKS_DIR: the checks folder)
 load(HERE + 'dom-harness.js');
+var CLOCK_READS = 0, FX_BOOTED = 0, FX_THROWN = 0;
+(function () { var now = performance.now; performance.now = function () { CLOCK_READS++; return now.call(this); }; })();
 var C = globalThis.CONFIG || {};
 C.screen = C.screen || 'laptop'; C.lives = C.lives || 0; C.seed = C.seed || 48213; C.policy = C.policy || 'short'; C.place = C.place || 'valley';
 location.hash = '#' + C.place + '-' + C.seed;
@@ -71,7 +80,12 @@ if (C.lives) {
 screen(C.screen);
 (function () {
   var html = readFile('index.html'), re = /<script src="([^"]+)"><\/script>/g, m;
-  while ((m = re.exec(html))) load(m[1]);
+  while ((m = re.exec(html))) {
+    if (C.fxThrow && m[1] === 'app.js') ['AYMotion', 'AYSound'].forEach(function (k) {     // modules that start and then throw at every cue
+      globalThis[k] = { TIMING: {}, boot: function () { FX_BOOTED++; return true; }, cue: function (name) { FX_THROWN++; throw new Error(k + ' throws at ' + name); } };
+    });
+    load(m[1]);
+  }
 })();
 
 var S = AYApp.state, W = AYWords, KIN_WHYS = 0, SLICES = 0, FITTED = [];
@@ -426,6 +440,8 @@ ok($('opening-premise').textContent === W.opening(AfterYou.createLife(1, other).
 ok(gaugesIn('map-opening') === (AfterYou.createLife(1, other).params.STOCK ? 4 : 0), 'the Opening sheet is ' + other + '\'s');
 pick = $('place-' + C.place); pick.checked = true; fire(pick, 'change');
 ok(S.place === C.place && document.documentElement.getAttribute('data-place') === C.place && $('opening-premise').textContent === W.opening(AfterYou.createLife(1, C.place).params).premise, 'and back to ' + C.place);
+if (C.fxThrow) ok(FX_BOOTED === 2 && FX_THROWN > 100, 'both throwing modules started, and every cue they were given threw (' + FX_THROWN + ' cues)');
 
 print('OK ' + JSON.stringify(C) + ': ' + CHECKS + ' checks; season lines ' + SEASON_LINES + ' (refused where the replay withheld a seal out of reach anyway ' + SEASON_REFUSED + '); seal ' + SEAL_SAID + '; stores read ' + STORES_READ + ', day totals read ' + TOTALS_READ + '; cards counted ' + CARDS_COUNTED + ', meters below zero ' + METER_BELOW + ', town lines ' + TOWN_LINES + ', strip columns ' + COLS_CHECKED + '; gauges on the day maps ' + GAUGES + ', banks on the cards ' + BANK_WORDS + '; lettering on day 1 ' + firstLetters.toFixed(2) + 'px; Why? under Elsewhere ' + KIN_WHYS +
-      '; slices after Skip ' + SLICES + '; pins ' + gapPx.toFixed(1) + 'px apart' + (pin.classList.contains('is-under') ? ' (ring drawn wide)' : '') + (FITTED.length ? '; fitted: ' + FITTED.join(', ') : ''));
+      '; slices after Skip ' + SLICES + '; pins ' + gapPx.toFixed(1) + 'px apart' + (pin.classList.contains('is-under') ? ' (ring drawn wide)' : '') + (FITTED.length ? '; fitted: ' + FITTED.join(', ') : '') +
+      (C.fxThrow ? '; modules that throw: ' + FX_THROWN + ' cues thrown' : '') + '; clock reads ' + CLOCK_READS);

@@ -739,6 +739,50 @@
     return out;
   }
 
+  // ---- the hands' lanes (for motion.js) -----------------------------------------------------
+  // Where the day map draws each hand, worked out by the same expressions as map() (mode 'day', and
+  // the Opening's one hand), as points and as the d of each drawn path, so that a mark on a drawn map
+  // can be found by its d. map() itself does not use these: what it draws is unchanged. The geometry
+  // is the sheet's own: the lettering (o.up) and a phone's crop never move a hand.
+  //   lanes(sheet, kind) -> for each of your neighbours (1, 2, 6, 7):
+  //     { out, outD, back, backD, broken, brokenD, stub, stubD, gate: { p, q, half }, gateD, cross, dir }
+  //     out: your hand that arrived, walked to the tip of its head; outD: the d of its .m-hand
+  //     back, backD: theirs, walked to your holding, and the d of its .m-hand
+  //     broken, brokenD: your hand turned back, to the crossing (.m-lost)
+  //     stub, stubD: your hand planned (.m-plan)
+  //     gate: your Stay, a bar through p square to the way p -> q, half its length; gateD: its d (.m-stay)
+  //     cross, dir: where the tie meets the barrier, and the tie's way there
+  //   lane(sheet, kind, from, to) -> { out, outD }: a hand from one holding to another, as drawn
+  //     (the sister's dealings: lane(sheet, kind, kin, id) and lane(sheet, kind, id, kin)); null where
+  //     the two holdings have no tie
+  function laneOf(g, from, to) {
+    var L = g.L, r = L.pw / 2 + L.bound + 3, pts = offsetLine(trimEnd(trimStart(tieLine(g, from, to), r), r), L.lane);
+    return { out: pts, outD: pathD(trimEnd(pts, L.head * 1.6)) };
+  }
+  function barD(p, q, half) {                // the d of barSVG's bar
+    var dx = q[0] - p[0], dy = q[1] - p[1], len = Math.sqrt(dx * dx + dy * dy) || 1;
+    dx /= len; dy /= len;
+    return 'M' + f(p[0] - dy * half) + ' ' + f(p[1] + dx * half) + 'L' + f(p[0] + dy * half) + ' ' + f(p[1] - dx * half);
+  }
+  function lanes(sheet, kind) {
+    var g = geo(sheet, kind), L = g.L, r = L.pw / 2 + L.bound + 3, res = {}, i, id, out, cross, toCross, gate, mine, theirs, broken, stub;
+    for (i = 0; i < ORDER.length; i++) {
+      id = ORDER[i]; out = tieLine(g, 0, id); cross = g.crossings[id];
+      toCross = out.slice(0, cross.i + 1).concat([cross.p]);
+      gate = trimStart(out, r + 3);
+      mine = laneOf(g, 0, id); theirs = laneOf(g, id, 0);
+      broken = offsetLine(trimEnd(trimStart(toCross, r), L.cross + 1.5), L.lane);
+      stub = offsetLine(trimEnd(trimStart(toCross, r), L.cross + 7), L.lane);
+      res[id] = {
+        out: mine.out, outD: mine.outD, back: theirs.out, backD: theirs.outD,
+        broken: broken, brokenD: pathD(broken), stub: stub, stubD: pathD(stub),
+        gate: { p: gate[0].slice(), q: gate[1].slice(), half: L.lane + 2.5 }, gateD: barD(gate[0], gate[1], L.lane + 2.5),
+        cross: cross.p.slice(), dir: cross.dir.slice()
+      };
+    }
+    return res;
+  }
+
   root.AYSheet = {
     LAYOUT: LAYOUT, ORDER: ORDER, TIES: TIES, f: f,
     letterUp: letterUp, lettered: lettered, geo: geo, labelAt: labelAt, nameRoom: nameRoom,
@@ -747,6 +791,12 @@
     // gauge on a drawn sheet (the Afterwards sets it season by season by the id af-gauge-<tie>)
     gauge: cardGauge,
     gaugeD: function (sheet, kind, key, v) { var sp = gaugeSpot(geo(sheet, kind), key, sheet); return gaugeD(sp.p[0], sp.p[1], sp.r, v); },
-    gaugeSpot: function (sheet, kind, key) { return gaugeSpot(geo(sheet, kind), key, sheet); }
+    gaugeSpot: function (sheet, kind, key) { return gaugeSpot(geo(sheet, kind), key, sheet); },
+    // the hands' lanes on the day map (see lanes)
+    lanes: lanes,
+    lane: function (sheet, kind, from, to) {
+      var g = geo(sheet, kind);
+      return g.ties[from < to ? from + '-' + to : to + '-' + from] ? laneOf(g, from, to) : null;
+    }
   };
 })(typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : this);

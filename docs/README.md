@@ -1,18 +1,19 @@
 # Design notes
 
-These notes record how After You was designed and built: the first version (v0.1.0, published 22 November 2026) and the four new places of v0.2.0 (published 26 November 2026). They were written during the build in a scratch folder that does not last, and were copied here on 2026-11-26 so that later work keeps them.
+These notes record how After You was designed and built: the first version (v0.1.0, published 22 November 2026) and the four new places of v0.2.0 (published 26 November 2026). They were written during the build in a scratch folder that does not last, and were copied here on 2026-11-26 so that later work keeps them. The design of the motion and sound pass ([motion-sound/SPEC.md](motion-sound/SPEC.md)) was added on 2026-11-27, amended as built.
 
 Each note is a record of its time: it says what was decided, believed and measured when it was written. Later notes, the binding decisions below and the code supersede it where they differ. The code is the authority on what the game does now: the header comment of `engine.js`, then `words.js` and `places/`. The notes describe the model and the scoring in full, so they are spoilers.
 
 ## Binding: the design lead's decisions
 
-**[places/LEAD-DECISIONS.md](places/LEAD-DECISIONS.md)**, written 2026-11-25 17:39, last changed 2026-11-26 02:33. Everything in it was binding on the v0.2.0 build, and where a report disagrees with it, it wins. Its five sections:
+**[places/LEAD-DECISIONS.md](places/LEAD-DECISIONS.md)**, written 2026-11-25 17:39, last changed 2026-11-26 02:33, section 6 added 2026-11-27. Everything in sections 1 to 5 was binding on the v0.2.0 build, and where a report disagrees with it, it wins. Its six sections:
 
 1. **The engine.** One engine, built from E1 plus the Banks' and the Saltmarket's engine additions, with the four fixers' presets; the page always calls `createLife(seed, placeKey)`.
 2. **Settled design calls.** The last-day rule (R2) stays for every new place; the Saltmarket's seal bar is 20 and is never printed; the Banks' poacher is accepted and never named; the Watch's PG12(b) and the Bridges' R_AFTER 4 are accepted; how the gates are read.
 3. **The page.** The valley does not move; plain words; every number on screen comes from the Life; the architecture, chooser, address, stored lives, per-place features, words and room on screen.
 4. **The confirmation round.** All four places hold; the facts the page must hold for each place (need and store ranges); the Watch takes the season replay; a plain line for a seal it withholds; how PG10's ratio is read.
 5. **The review round.** "Even so" on a Why? card is accepted in all five places; the valley's laptop day is fixed by CSS in every place; 320x640 is exempt from "Begin on the first screen"; four things are accepted as they are.
+6. **The motion and sound pass.** "Motion in two places only" and sound's place on the cut list are superseded; the page still never tells a missing act's luck from a choice, in motion and sound as in words.
 
 ## How to read them
 
@@ -30,6 +31,7 @@ Each note is a record of its time: it says what was decided, believed and measur
 4. **The page** (map 23 November, build 25 November): the page map, then six stages, from a refactor that leaves the valley unchanged to the integration of all five places.
 5. **The review round** (26 November): seven reviewers, two fix rounds, two verifications.
 6. **The lead's decisions**, above, settle what the rounds left open.
+7. **The motion and sound pass** (27 November): one design settled from three proposals, built as `motion.js` and `sound.js`, then reviewed and fixed; the design is kept as built.
 
 ## Index
 
@@ -130,7 +132,13 @@ The page map was written on 23 November, before the places were designed; the si
 
 | Document | What it is | Written |
 |---|---|---|
-| [places/LEAD-DECISIONS.md](places/LEAD-DECISIONS.md) | The design lead's binding decisions for v0.2.0: the one engine, settled design calls, the page's principles, and the rulings after the confirmation and review rounds. | 2026-11-25 17:39, last changed 2026-11-26 02:33 |
+| [places/LEAD-DECISIONS.md](places/LEAD-DECISIONS.md) | The design lead's binding decisions for v0.2.0: the one engine, settled design calls, the page's principles, and the rulings after the confirmation and review rounds; section 6, the two older rules the motion and sound pass supersedes. | 2026-11-25 17:39, last changed 2026-11-26 02:33, section 6 added 2026-11-27 |
+
+### 7. The motion and sound pass
+
+| Document | What it is | Written |
+|---|---|---|
+| [motion-sound/SPEC.md](motion-sound/SPEC.md) | The design of `motion.js` and `sound.js`, as built: the luck-or-choice rule made mechanical, the motion event by event, the Afterwards as a time-lapse, the sound and the music slot, reduced motion and access, the hooks and payloads `app.js` hands the modules, and part 15 of the checks. Amended where the build or its review changed it, each amendment marked **As built**. | 2026-11-27 00:13, amended 2026-11-27 |
 
 ## Where each note came from
 
@@ -180,6 +188,7 @@ The page map was written on 23 November, before the places were designed; the si
 | `places/page/REPORT-p6-integrate.md` | `<scratch>/places/page-p6/REPORT.md` |
 | `places/REVIEW-ROUND.md` | the review workflow's result (JSON, not kept) |
 | `places/LEAD-DECISIONS.md` | `<scratch>/places/final/LEAD-DECISIONS.md` |
+| `motion-sound/SPEC.md` | the pass's design, written before the build and amended as built (its header line lists the amendments) |
 
 ## What was changed in the copies
 
@@ -192,4 +201,6 @@ Each copied note is the note as it was, except that:
 - other placeholders standing outside code, such as `<place>` and `<seed>`, were escaped as `\<place>` (14 places in 7 notes), for the same reason;
 - in [first-version/SPEC.md](first-version/SPEC.md), a remark about a space in the game folder's path was dropped, since the path it described was made neutral.
 
-Nothing else in them was changed. [places/REVIEW-ROUND.md](places/REVIEW-ROUND.md) is rendered from the review workflow's JSON result (paths made neutral the same way, and `<` escaped outside code), and each `PRESET.md` quotes `engine.js`.
+Nothing else in them was changed, except that [places/LEAD-DECISIONS.md](places/LEAD-DECISIONS.md) gained a section 6 on 2026-11-27, for the motion and sound pass, and a sentence at the end of its header line saying so; its sections 1 to 5 are as copied. [places/REVIEW-ROUND.md](places/REVIEW-ROUND.md) is rendered from the review workflow's JSON result (paths made neutral the same way, and `<` escaped outside code), and each `PRESET.md` quotes `engine.js`.
+
+[motion-sound/SPEC.md](motion-sound/SPEC.md), added on 2026-11-27, is not a copy as it was: it starts with a header line, and each place where the build or its review changed the design is amended and marked **As built**.
